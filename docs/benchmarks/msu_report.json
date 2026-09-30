@@ -1,16 +1,16 @@
 {
-  "protocol": "Row-order 60/20/20 per capture, benign-only training, validation-only FPR calibration",
-  "engine_sha256": "1cba5d86ad13883f3a9e6a241e6c64fae050b3dd60655e79d91609efe9e8f697",
+  "protocol": "Row-order 60/20/20 per capture, benign-only training, validation-only FPR calibration. Rules: TimeInterval outside the benign-validation band at the same FPR; SetPoint value never seen in benign training rows.",
+  "engine_sha256": "5a4ccb3f01f7838bace747cf69caed733e9a27cd87b56095edba72051f17d8fe",
   "python": "3.12.0 (tags/v3.12.0:0fb18b0, Oct  2 2023, 13:03:39) [MSC v.1935 64 bit (AMD64)]",
   "numpy": "2.5.2",
   "command": [
-    "tools\\benchmark_msu.py",
+    "tools/benchmark_msu.py",
     "--engine",
-    "build-libtorch\\Release\\threatfusion.exe",
-    "--output",
-    "out\\benchmark_msu",
+    "build-libtorch/Release/threatfusion.exe",
     "--epochs",
-    "5"
+    "5",
+    "--output",
+    "out/benchmark_msu"
   ],
   "smoke_run": false,
   "cases": {
@@ -93,6 +93,63 @@
           "f1": 0.9325842696629213,
           "accuracy": 0.9936496736637855,
           "false_positive_rate": 0.004989835520236555
+        },
+        "timeinterval_rule": {
+          "TP": 258,
+          "TN": 5410,
+          "FP": 1,
+          "FN": 0,
+          "precision": 0.9961389961389961,
+          "recall": 1.0,
+          "f1": 0.9980657640232108,
+          "accuracy": 0.9998236020462162,
+          "false_positive_rate": 0.00018480872297172427
+        },
+        "setpoint_rule": {
+          "TP": 247,
+          "TN": 5411,
+          "FP": 0,
+          "FN": 11,
+          "precision": 1.0,
+          "recall": 0.9573643410852714,
+          "f1": 0.9782178217821782,
+          "accuracy": 0.9980596225083789,
+          "false_positive_rate": 0.0
+        }
+      },
+      "metrics_without_TimeInterval": {
+        "isolation_forest": {
+          "TP": 258,
+          "TN": 5411,
+          "FP": 0,
+          "FN": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0
+        },
+        "lstm": {
+          "TP": 249,
+          "TN": 5411,
+          "FP": 0,
+          "FN": 9,
+          "precision": 1.0,
+          "recall": 0.9651162790697675,
+          "f1": 0.9822485207100592,
+          "accuracy": 0.9984124184159464,
+          "false_positive_rate": 0.0
+        },
+        "hybrid": {
+          "TP": 249,
+          "TN": 5411,
+          "FP": 0,
+          "FN": 9,
+          "precision": 1.0,
+          "recall": 0.9651162790697675,
+          "f1": 0.9822485207100592,
+          "accuracy": 0.9984124184159464,
+          "false_positive_rate": 0.0
         }
       }
     },
@@ -175,12 +232,69 @@
           "f1": 0.9667477696674777,
           "accuracy": 0.9860116001364722,
           "false_positive_rate": 0.007570841444949167
+        },
+        "timeinterval_rule": {
+          "TP": 1237,
+          "TN": 4583,
+          "FP": 40,
+          "FN": 2,
+          "precision": 0.9686765857478465,
+          "recall": 0.9983857949959645,
+          "f1": 0.9833068362480127,
+          "accuracy": 0.9928352098259979,
+          "false_positive_rate": 0.008652390222799048
+        },
+        "setpoint_rule": {
+          "TP": 0,
+          "TN": 4623,
+          "FP": 0,
+          "FN": 1239,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 0.7886386898669396,
+          "false_positive_rate": 0.0
+        }
+      },
+      "metrics_without_TimeInterval": {
+        "isolation_forest": {
+          "TP": 1124,
+          "TN": 4492,
+          "FP": 131,
+          "FN": 115,
+          "precision": 0.895617529880478,
+          "recall": 0.9071832122679581,
+          "f1": 0.9013632718524459,
+          "accuracy": 0.9580348004094166,
+          "false_positive_rate": 0.028336577979666884
+        },
+        "lstm": {
+          "TP": 1126,
+          "TN": 4529,
+          "FP": 94,
+          "FN": 113,
+          "precision": 0.9229508196721311,
+          "recall": 0.9087974172719936,
+          "f1": 0.9158194387962586,
+          "accuracy": 0.9646878198567042,
+          "false_positive_rate": 0.020333117023577763
+        },
+        "hybrid": {
+          "TP": 1126,
+          "TN": 4518,
+          "FP": 105,
+          "FN": 113,
+          "precision": 0.9147034930950447,
+          "recall": 0.9087974172719936,
+          "f1": 0.9117408906882591,
+          "accuracy": 0.9628113271920846,
+          "false_positive_rate": 0.0227125243348475
         }
       }
     },
     "dos": {
       "source": "D:\\ThreatFusion-AI\\datasets\\MSU_ICS\\ModbusRTUfeatureSetsV2\\DoS Data FeatureSet\\modbusRTU_DoSResponseInjectionV2.csv",
-      "sha256": "f547a7a83694a4078635fe43281ce181f8dc9049afbf04395cf52bbaa65b21dc",
+      "sha256": "71c94f80c1a0e122dd59f33251a945da3f20dc3978f0f4317f94bbf0ab48ede9",
       "split": {
         "train": {
           "rows": 17365,
@@ -257,6 +371,63 @@
           "f1": 0.9551422319474836,
           "accuracy": 0.9858352046985662,
           "false_positive_rate": 0.016680227827502035
+        },
+        "timeinterval_rule": {
+          "TP": 873,
+          "TN": 4875,
+          "FP": 41,
+          "FN": 0,
+          "precision": 0.9551422319474836,
+          "recall": 1.0,
+          "f1": 0.9770565193060996,
+          "accuracy": 0.9929176023492832,
+          "false_positive_rate": 0.008340113913751017
+        },
+        "setpoint_rule": {
+          "TP": 0,
+          "TN": 4916,
+          "FP": 0,
+          "FN": 873,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 0.849196752461565,
+          "false_positive_rate": 0.0
+        }
+      },
+      "metrics_without_TimeInterval": {
+        "isolation_forest": {
+          "TP": 873,
+          "TN": 4767,
+          "FP": 149,
+          "FN": 0,
+          "precision": 0.8542074363992173,
+          "recall": 1.0,
+          "f1": 0.9213720316622691,
+          "accuracy": 0.9742615304888582,
+          "false_positive_rate": 0.03030919446704638
+        },
+        "lstm": {
+          "TP": 872,
+          "TN": 4813,
+          "FP": 103,
+          "FN": 1,
+          "precision": 0.8943589743589744,
+          "recall": 0.9988545246277205,
+          "f1": 0.9437229437229437,
+          "accuracy": 0.9820348937640352,
+          "false_positive_rate": 0.0209519934906428
+        },
+        "hybrid": {
+          "TP": 872,
+          "TN": 4802,
+          "FP": 114,
+          "FN": 1,
+          "precision": 0.8843813387423936,
+          "recall": 0.9988545246277205,
+          "f1": 0.9381387842926304,
+          "accuracy": 0.9801347382967698,
+          "false_positive_rate": 0.023189585028478437
         }
       }
     }

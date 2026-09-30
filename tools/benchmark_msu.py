@@ -1,4 +1,8 @@
-"""Reproducible MSU benchmark: row-order splits, benign training, validation FPR calibration."""
+"""Reproducible MSU benchmark: row-order splits, benign training, validation FPR calibration.
+
+Every capture is also scored by two single-feature rules and re-run without the TimeInterval feature,
+because docs/benchmarks/msu_data_audit.md shows TimeInterval and SetPoint separate attacks on their own.
+"""
 import argparse
 import csv
 import hashlib
@@ -7,7 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 import numpy as np
-from normalize_msu_ics import normalize_msu_row
+from normalize_msu_ics import normalize_msu_row, safe_float
 from train_lstm_autoencoder import train_model
 
 CASES = {
@@ -15,6 +19,7 @@ CASES = {
     'response': 'Multiclass FeatureSets/MulticlassResponseInjectionV2.csv',
     'dos': 'DoS Data FeatureSet/modbusRTU_DoSResponseInjectionV2.csv',
 }
+TIME_INTERVAL = 2  # Index of TimeInterval in normalize_msu_row extra_features.
 
 
 def metrics(labels, predictions):
@@ -47,15 +52,32 @@ def read_scores(path):
     return rows, np.array([float(r['if_score']) for r in rows]), losses
 
 
-def run_case(name, source, engine, output, args):
-    folder = output / name
+def rule_baselines(raw, labels, cut_train, cut_validation, fpr):
+    """Single-feature rules calibrated like the models: benign training/validation rows only."""
+    interval = np.array([safe_float(r.get('TimeInterval')) for r in raw])
+    setpoint = np.array([safe_float(r.get('SetPoint')) for r in raw])
+    benign = np.asarray(labels) == 'benign'
+    validation = interval[cut_train:cut_validation][benign[cut_train:cut_validation]]
+    low, high = np.quantile(validation, [fpr / 2, 1 - fpr / 2])
+    seen = set(setpoint[:cut_train][benign[:cut_train]])
+    test_labels = labels[cut_validation:]
+    return {'timeinterval_rule': metrics(test_labels, (interval[cut_validation:] < low) | (interval[cut_validation:] > high)),
+            'setpoint_rule': metrics(test_labels, [v not in seen for v in setpoint[cut_validation:]])}
+
+
+def run_case(name, source, engine, output, args, drop_time_interval=False):
+    folder = output / (name + ('_without_TimeInterval' if drop_time_interval else ''))
     folder.mkdir(parents=True, exist_ok=True)
     with source.open(encoding='utf-8-sig', newline='') as handle:
-        events = [normalize_msu_row(row, i, name) for i, row in enumerate(csv.DictReader(handle), 1)]
+        raw = [{k.strip(): (v or '').strip() for k, v in row.items() if k} for row in csv.DictReader(handle)]
     if args.max_rows:
         # Uniform downsampling over the entire capture retains its late attack segment.
-        indices = np.linspace(0, len(events) - 1, min(args.max_rows, len(events)), dtype=int)
-        events = [events[i] for i in indices]
+        indices = np.linspace(0, len(raw) - 1, min(args.max_rows, len(raw)), dtype=int)
+        raw = [raw[i] for i in indices]
+    events = [normalize_msu_row(row, i, name) for i, row in enumerate(raw, 1)]
+    if drop_time_interval:
+        for event in events:
+            del event['extra_features'][TIME_INTERVAL]
     cut_train, cut_validation = int(len(events) * .6), int(len(events) * .8)
     partitions = {'train': events[:cut_train], 'validation': events[cut_train:cut_validation],
                   'test': events[cut_validation:]}
@@ -100,6 +122,8 @@ def run_case(name, source, engine, output, args):
             'hybrid': metrics(labels, np.isfinite(test_loss) & (hybrid_test > threshold_hybrid)),
         },
     }
+    if not drop_time_interval:
+        report['metrics'].update(rule_baselines(raw, [e['label'] for e in events], cut_train, cut_validation, args.fpr))
     (folder / 'report.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
     return report
 
@@ -123,19 +147,28 @@ def main():
     reports = {}
     for name, filename in CASES.items():
         print(f'Benchmarking {name}...', flush=True)
-        reports[name] = run_case(name, Path(args.dataset).resolve() / filename, Path(args.engine).resolve(), output, args)
-    report = {'protocol': 'Row-order 60/20/20 per capture, benign-only training, validation-only FPR calibration',
+        source, engine = Path(args.dataset).resolve() / filename, Path(args.engine).resolve()
+        reports[name] = run_case(name, source, engine, output, args)
+        ablation = run_case(name, source, engine, output, args, drop_time_interval=True)
+        reports[name]['metrics_without_TimeInterval'] = ablation['metrics']
+    report = {'protocol': 'Row-order 60/20/20 per capture, benign-only training, validation-only FPR calibration. '
+                          'Rules: TimeInterval outside the benign-validation band at the same FPR; '
+                          'SetPoint value never seen in benign training rows.',
               'engine_sha256': hashlib.sha256(Path(args.engine).read_bytes()).hexdigest(),
               'python': sys.version, 'numpy': np.__version__,
               'command': sys.argv, 'smoke_run': bool(args.max_rows), 'cases': reports,
               'note': 'Labels tune no model features. MSU timestamps are absent. These are capture-specific binary results, not malware-family identification.'}
     (output / 'report.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
     lines = ['# Reproducible MSU Benchmark', '', report['protocol'], '',
-             '| Capture | Model | TP | TN | FP | FN | Precision | Recall | F1 | FPR |',
-             '|---|---|---:|---:|---:|---:|---:|---:|---:|---:|']
+             'Read this table with [the data audit](msu_data_audit.md): a single-feature rule matching or beating '
+             'the models means the capture is separable without learning attack behaviour.', '',
+             '| Capture | Detector | Features | TP | TN | FP | FN | Precision | Recall | F1 | FPR |',
+             '|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|']
     for name, case in reports.items():
-        for model, m in case['metrics'].items():
-            lines.append(f"| {name} | {model} | {m['TP']} | {m['TN']} | {m['FP']} | {m['FN']} | {m['precision']:.4f} | {m['recall']:.4f} | {m['f1']:.4f} | {m['false_positive_rate']:.4f} |")
+        rows = [(model, 'rule' if model.endswith('_rule') else 'all', m) for model, m in case['metrics'].items()]
+        rows += [(model, 'without TimeInterval', m) for model, m in case['metrics_without_TimeInterval'].items()]
+        for model, features, m in rows:
+            lines.append(f"| {name} | {model} | {features} | {m['TP']} | {m['TN']} | {m['FP']} | {m['FN']} | {m['precision']:.4f} | {m['recall']:.4f} | {m['f1']:.4f} | {m['false_positive_rate']:.4f} |")
     (output / 'report.md').write_text('\n'.join(lines) + '\n', encoding='utf-8')
     print('\n'.join(lines), flush=True)
 

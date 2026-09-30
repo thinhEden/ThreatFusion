@@ -225,15 +225,15 @@ python -m venv .venv
 
 Protocol: per-capture row-order split 60% training / 20% validation / 20% test. Training uses benign windows grouped by source endpoint, with attack gaps resetting a flow window. Thresholds use only benign validation scores at a target FPR of 1%; the test set is never used for tuning. Hybrid weights are fixed at 0.5 / 0.5, with LSTM loss scaled using validation data. Every test row contributes to the confusion matrix; missing warmup scores are treated as negative predictions.
 
-| Capture | Isolation Forest F1 | LSTM F1 | Hybrid F1 | LSTM Test FPR |
-| :--- | ---: | ---: | ---: | ---: |
-| Command Injection | 94.33% | 92.57% | 93.26% | 0.57% |
-| Response Injection | 89.27% | 96.75% | 96.67% | 0.71% |
-| DoS | 91.03% | 95.57% | 95.51% | 1.65% |
+| Capture | Isolation Forest F1 | LSTM F1 | Hybrid F1 | LSTM Test FPR | TimeInterval rule F1 | LSTM F1 without TimeInterval |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Command Injection | 94.33% | 92.57% | 93.26% | 0.57% | **99.81%** | 98.22% |
+| Response Injection | 89.27% | 96.75% | 96.67% | 0.71% | **98.33%** | 91.58% |
+| DoS | 91.03% | 95.57% | 95.51% | 1.65% | **97.71%** | 94.37% |
 
 [Archived report](docs/benchmarks/msu_report.md) includes TP/TN/FP/FN. Generated models, their metadata, dataset SHA-256 hashes, split counts, validation thresholds, raw scores, and engine logs are saved under `out/benchmark_msu`. Use `--max-rows` only for smoke runs; those are labeled as subsampled in the report.
 
-**Data caveat:** [the MSU data audit](docs/benchmarks/msu_data_audit.md) shows that each capture is a benign block with an appended attack block. A single `TimeInterval` threshold calibrated with the same protocol scores F1 0.998 on command, 0.983 on response and 0.977 on DoS, which beats every model above. `SetPoint` alone separates command injection. Treat this table as capture-specific novelty detection, not evidence that the models learned attack behaviour.
+**Data caveat:** [the MSU data audit](docs/benchmarks/msu_data_audit.md) shows that each capture is a benign block with an appended attack block. A single `TimeInterval` threshold, calibrated with the same protocol, beats every model on every capture. `SetPoint` alone separates command injection. Without `TimeInterval`, the engine models still reach 0.92-0.98 F1, using other values that the attacks change. Treat this table as capture-specific novelty detection, not evidence that the models learned attack behaviour.
 
 These are binary detector-score results for these captures. They do not measure malware-family identification or the engine's separate operational risk cutoff. Hybrid results are offline weighted score analysis. MSU feature CSVs have no capture timestamps; synthetic endpoint addresses are display mappings, and these results do not validate network-cycle timing. The old tuned benchmark table was removed because its evaluation procedure was not available in this repository.
 

@@ -15,7 +15,7 @@ The local folder `datasets/MSU_ICS/ModbusRTUfeatureSetsV2` corresponds to **Data
 
 The author's "unintended patterns" warning is attached to Dataset 3, not to this archive. The checks below show that this archive has comparable shortcut features, so the warning is still relevant in practice.
 
-**The local copy matches the official archive.** The archive was downloaded on 2026-09-30: 2,162,663 bytes, SHA-256 `11534aa54e8d70c9279307413ccbfc4afdfba163eade9af918c4e2a04dddab4a`. All 14 CSVs are byte-identical to the archive, and there are no extra local files. `.gitattributes` marks `datasets/MSU_ICS/**` as `-text`, so a checkout with `core.autocrlf=true` no longer converts them to CRLF. `msu_report.json` was generated from CRLF working copies before that change. Its DoS hash (`f547a7a8…`) therefore differs from the archive hash (`71c94f80…`), but the content is the same. Official per-file hashes are in `msu_data_audit.json`.
+**The local copy matches the official archive.** The archive was downloaded on 2026-09-30: 2,162,663 bytes, SHA-256 `11534aa54e8d70c9279307413ccbfc4afdfba163eade9af918c4e2a04dddab4a`. All 14 CSVs are byte-identical to the archive, and there are no extra local files. `.gitattributes` marks `datasets/MSU_ICS/**` as `-text`, so a checkout with `core.autocrlf=true` no longer converts them to CRLF. `msu_report.json` was regenerated from these files, so its hashes match the archive. Official per-file hashes are in `msu_data_audit.json`.
 
 ## Findings
 
@@ -31,28 +31,23 @@ The author's "unintended patterns" warning is attached to Dataset 3, not to this
 
 ## Impact on the Benchmark
 
-A two-sided `TimeInterval` band calibrated on benign validation rows at 1% FPR uses the same protocol as `benchmark_msu.py`. It beats every model in [msu_report.md](msu_report.md):
+`benchmark_msu.py` now reports two single-feature rules next to the models. The `TimeInterval` rule is a two-sided band calibrated on benign validation rows at 1% FPR. The `SetPoint` rule flags values never seen in benign training rows. It also reruns the C++ engine with `TimeInterval` removed. The all-feature model results reproduce the earlier report exactly. See [msu_report.md](msu_report.md).
 
-| Capture | Best reported model F1 | TimeInterval rule F1 | Rule FP / FN |
-|---|---:|---:|---:|
-| Command | 0.9433 (Isolation Forest) | **0.9981** | 1 / 0 |
-| Response | 0.9675 (LSTM) | **0.9833** | 40 / 2 |
-| DoS | 0.9557 (LSTM) | **0.9771** | 41 / 0 |
+| Capture | Best all-feature model F1 | TimeInterval rule F1 | SetPoint rule F1 | Best model F1 without TimeInterval |
+|---|---:|---:|---:|---:|
+| Command | 0.9433 (Isolation Forest) | **0.9981** | 0.9782 | 1.0000 (Isolation Forest) |
+| Response | 0.9675 (LSTM) | **0.9833** | 0.0000 | 0.9158 (LSTM) |
+| DoS | 0.9557 (LSTM) | **0.9771** | 0.0000 | 0.9437 (LSTM) |
 
-The scikit-learn Isolation Forest proxy uses the engine's 12 features, 5 seeds and the same calibration. It reproduces the C++ Isolation Forest F1: 0.943, 0.892 and 0.915 against the reported 0.943, 0.893 and 0.910.
+With all features, the timing rule beats every model on every capture. Removing `TimeInterval` lowers the best response and DoS F1 by 5 and 1 points. The models still reach 0.92-0.94 on those two captures, using pressure values, function codes and frame lengths that the attacks also change. On command injection, F1 rises to 1.0, because `SetPoint` alone separates the attacks.
 
-| Capture | All features | Without TimeInterval | TimeInterval only |
-|---|---:|---:|---:|
-| Command | 0.943 | 1.000 (`SetPoint` alone separates) | 0.906 |
-| Response | 0.892 | 0.652 ± 0.162 | 0.981 |
-| DoS | 0.915 | 0.928 | 0.978 |
+An earlier scikit-learn Isolation Forest proxy (`tools/audit_msu_data.py`) predicted a steeper response drop, from 0.892 to 0.652 ± 0.162. The C++ engine does not reproduce it: its Isolation Forest scores 0.9014 without `TimeInterval`. Treat the engine results as authoritative; the proxy only matches the engine when all features are used.
 
 ## Conclusion
 
-The data are authentic research data from a credible source and suit a portfolio or pipeline demonstration. The current MSU F1 scores do **not** show that the LSTM, Isolation Forest or hybrid learned attack behaviour: one timing threshold or one setpoint value matches or beats them. Report results on these files as capture-specific novelty detection, next to the single-feature baselines.
+The data are authentic research data from a credible source and suit a portfolio or pipeline demonstration. The current MSU F1 scores do **not** show that the LSTM, Isolation Forest or hybrid learned attack behaviour: one timing threshold beats them on every capture. Report results on these files as capture-specific novelty detection, next to the single-feature baselines. The benchmark report now includes those baselines.
 
 Before making research claims:
 
-- Report the `TimeInterval` and `SetPoint` rule baselines in the benchmark table, plus an ablation without `TimeInterval`.
 - Deduplicate before splitting, or report metrics over unique vectors.
 - Prefer Dataset 4 (New Gas Pipeline, 2015), which the author describes as having more randomness, for claims about learned behaviour.
