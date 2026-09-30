@@ -40,7 +40,9 @@ Report MSU scores as capture-specific novelty detection, next to those single-fe
 | `empire_psexec_dcerpc_tcp_svcctl.zip` | SDWIN-190518210652 | T1021 |
 | `empire_launcher_vbs.zip` | SDWIN-190518182022 | T1059.005 |
 
-SHA-256 hashes are recorded in `docs/benchmarks/windows_detection_report.json`. `tools/normalize_windows_events.py` converts the NXLog JSON to ECS and keeps the raw fields under `winlog.event_data`. The comsvcs capture has no time zone on `TimeCreated`, so it is treated as UTC for ordering only.
+SHA-256 hashes are recorded in `docs/benchmarks/windows_detection_report.json`.
+
+`EVTX_ATTACK_SAMPLES/` is git-ignored. It holds `kerberos_pwd_spray_4771.evtx` (69,632 bytes, SHA-256 `4a0a1c71…9ae11d`) from [EVTX-ATTACK-SAMPLES](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES) `Credential Access/`, downloaded on 2026-09-30. The repository is GPL-3.0, so the file is not redistributed here; download it to reproduce WIN-007. `tools/normalize_windows_events.py` reads `.evtx` with the built-in `Get-WinEvent`, so this step needs Windows. `tools/normalize_windows_events.py` converts the NXLog JSON to ECS and keeps the raw fields under `winlog.event_data`. The comsvcs capture has no time zone on `TimeCreated`, so it is treated as UTC for ordering only.
 
 ## SWaT Kaggle Mirror
 

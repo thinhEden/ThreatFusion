@@ -61,6 +61,19 @@
       ]
     },
     {
+      "techniqueID": "T1110.003",
+      "color": "#2e8b57",
+      "enabled": true,
+      "showSubtechniques": true,
+      "comment": "Rules: WIN-007. Distinct true-positive events on OTRF captures: 1.",
+      "links": [
+        {
+          "label": "ATT&CK",
+          "url": "https://attack.mitre.org/techniques/T1110/003/"
+        }
+      ]
+    },
+    {
       "techniqueID": "T1543.003",
       "color": "#2e8b57",
       "enabled": true,

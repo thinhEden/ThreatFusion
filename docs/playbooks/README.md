@@ -28,6 +28,6 @@ OT response follows [NIST SP 800-82 Rev. 3](https://csrc.nist.gov/pubs/sp/800/82
 
 - **PB-01:** runs against data that exists today: the context audit, the PCAP evidence and the `threatfusion-alerts-*` index.
 - **PB-02 and PB-03:** alerts come from the EQL detections WIN-001 to WIN-006 in `siem/elastic/windows_rules.json`. They are validated on five OTRF captures and deployed to Elastic Security; see the [evaluation](../benchmarks/windows_detection_report.md). The KQL hunting snippets use the same ECS fields as the `threatfusion-windows-otrf` index, but have not been run as saved searches.
-- **PB-04:** remains untested. The OTRF captures contain no brute-force (4625) or Kerberoasting (4769) activity.
+- **PB-04:** Kerberos password spraying (4768/4771) is validated by the ES|QL rule WIN-007 on one EVTX-ATTACK-SAMPLES capture. That file is GPL-3.0, so it is kept locally and not committed. NTLM brute force (4625) and Kerberoasting (4769) remain untested.
 
 The ATT&CK coverage of every rule is listed in [docs/attack/coverage.md](../attack/coverage.md).

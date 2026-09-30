@@ -61,6 +61,7 @@ EQL rules in `siem/elastic/windows_rules.json` are evaluated on five OTRF captur
 | [T1053.005](https://attack.mitre.org/techniques/T1053/005/) | Scheduled Task | WIN-005 | 3 | `empire_schtasks_creation_standard_user` |
 | [T1059.001](https://attack.mitre.org/techniques/T1059/001/) | PowerShell | WIN-001, WIN-006 | 4 | `empire_launcher_vbs`, `empire_psexec_dcerpc_tcp_svcctl` |
 | [T1059.005](https://attack.mitre.org/techniques/T1059/005/) | Visual Basic | WIN-006 | 2 | `empire_launcher_vbs` |
+| [T1110.003](https://attack.mitre.org/techniques/T1110/003/) | Password Spraying | WIN-007 | 1 | `kerberos_pwd_spray_4771` |
 | [T1543.003](https://attack.mitre.org/techniques/T1543/003/) | Windows Service | WIN-004 | 2 | `empire_psexec_dcerpc_tcp_svcctl` |
 | [T1569.002](https://attack.mitre.org/techniques/T1569/002/) | Service Execution | WIN-004 | 2 | `empire_psexec_dcerpc_tcp_svcctl` |
 

@@ -6,7 +6,7 @@
 | **ATT&CK** | Enterprise [T1110.001](https://attack.mitre.org/techniques/T1110/001/) Password Guessing, [T1110.003](https://attack.mitre.org/techniques/T1110/003/) Password Spraying, [T1078](https://attack.mitre.org/techniques/T1078/) Valid Accounts; ICS [T0859](https://attack.mitre.org/techniques/T0859/) Valid Accounts |
 | **Roles** | SOC L1, SOC L2, identity administrator, account owner |
 
-KQL and EQL below are templates for Winlogbeat ECS fields. They are not yet validated (see [README](README.md)).
+Kerberos spraying is detected by WIN-007, an ES|QL rule counting distinct failed accounts per source. It is validated on one EVTX-ATTACK-SAMPLES capture: 9 accounts in 11 ms, then a successful TGT for one account. The KQL and EQL snippets below, and NTLM brute force (4625), remain unvalidated (see [README](README.md)).
 
 ## 1. Triage (DE.AE)
 
