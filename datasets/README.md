@@ -16,6 +16,18 @@ Run `tools/benchmark_msu.py` with a LibTorch-enabled C++ executable. It creates 
 
 Report MSU scores as capture-specific novelty detection, next to those single-feature baselines.
 
+## MSU New Gas Pipeline 2015
+
+`MSU_ICS/GasPipeline2015/IanArffDataset.arff` is **Dataset 4 (New Gas Pipeline)** from the same page, downloaded on 2026-09-30 from <http://www.ece.uah.edu/~thm0009/icsdatasets/IanArffDataset.arff>. The file is 18,340,346 bytes with SHA-256 `970a7bcd…af459`. It is the main public dataset for the OT-context experiment, for three reasons:
+
+- It has 274,628 Modbus RTU packets over 3.2 days, with timestamps.
+- Attacks are interleaved throughout the capture: every tenth of the rows is 19.7-24.0% attacks.
+- No single feature separates attacks from normal traffic. The best single-feature F1 is 0.355.
+
+`tools/normalize_gas2015.py` writes label-free JSONL events plus a separate ground-truth CSV. Decoded control parameters go into `process_values`. Serial Modbus has no IP addresses, so 10.0.0.1 (master) and 10.0.0.2 (RTU) are display mappings.
+
+`tools/benchmark_gas2015.py` splits the capture by time. It derives an operating envelope from benign training writes only, then scores the validation and test requests with the C++ engine. See [the results](../docs/benchmarks/gas2015_context_report.md).
+
 ## SWaT Kaggle Mirror
 
 Local raw paths are configured in `swat_local.json`. The files come from Kaggle [`vishala28/swat-dataset-secure-water-treatment-system`](https://www.kaggle.com/datasets/vishala28/swat-dataset-secure-water-treatment-system) by Vishal Agrawal, created 2025-10-28, with a declared licence of CC0. Kaggle's public API reports these sizes:

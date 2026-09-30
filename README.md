@@ -237,6 +237,22 @@ Protocol: per-capture row-order split 60% training / 20% validation / 20% test. 
 
 These are binary detector-score results for these captures. They do not measure malware-family identification or the engine's separate operational risk cutoff. Hybrid results are offline weighted score analysis. MSU feature CSVs have no capture timestamps; synthetic endpoint addresses are display mappings, and these results do not validate network-cycle timing. The old tuned benchmark table was removed because its evaluation procedure was not available in this repository.
 
+### OT Context on Public Data (MSU New Gas Pipeline 2015)
+
+This experiment repeats the lab false-positive study on a public, timestamped capture with interleaved attacks. The C++ engine applies an operating envelope to BR-001 write alerts. The envelope is derived only from benign writes in the first 60% of the capture:
+
+```powershell
+python tools/benchmark_gas2015.py --engine build-libtorch/Release/threatfusion.exe
+```
+
+| Test window, FC16 writes | FP | Recall | MSCI recall | MPCI recall |
+| :--- | ---: | ---: | ---: | ---: |
+| Baseline (every write alerts) | 9,723 | 1.000 | 1.000 | 1.000 |
+| + operating envelope | **0** | 0.516 | **0.000** | 0.789 |
+| + envelope, state changes kept for review | 594 | 0.665 | 0.209 | 0.929 |
+
+The envelope removes every false positive but misses all state-command injections (MSCI) and DoS writes. Those attacks use values that operators also use, and serial Modbus has no authenticated source. The validation window shows the same pattern. The full protocol, per-category results and limits are in the [report](docs/benchmarks/gas2015_context_report.md).
+
 ---
 
 ## Simulation Lab
