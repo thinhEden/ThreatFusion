@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iomanip>
 #include <sstream>
+#include <regex>
 #include <stdexcept>
 
 namespace threatfusion {
@@ -17,16 +18,22 @@ static double utcSeconds(const std::string& value) {
         if (consumed != value.size() || !std::isfinite(result)) throw std::runtime_error("Invalid epoch timestamp");
         return result;
     }
-    if (value.size() != 20 || value.back() != 'Z') throw std::runtime_error("Authorization requires UTC Z timestamps");
+    static const std::regex iso(R"(^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(\.\d{1,9})?Z$)");
+    std::smatch match;
+    if (!std::regex_match(value, match, iso)) throw std::runtime_error("Authorization requires UTC Z timestamps");
     std::tm time{};
-    std::istringstream input(value);
-    input >> std::get_time(&time, "%Y-%m-%dT%H:%M:%SZ");
+    std::istringstream input(match[1].str());
+    input >> std::get_time(&time, "%Y-%m-%dT%H:%M:%S");
     if (input.fail()) throw std::runtime_error("Invalid UTC timestamp");
 #ifdef _WIN32
-    return static_cast<double>(_mkgmtime(&time));
+    const auto seconds = _mkgmtime(&time);
 #else
-    return static_cast<double>(timegm(&time));
+    const auto seconds = timegm(&time);
 #endif
+    std::ostringstream normalized;
+    normalized << std::put_time(&time, "%Y-%m-%dT%H:%M:%S");
+    if (normalized.str() != match[1].str()) throw std::runtime_error("Invalid UTC calendar date");
+    return static_cast<double>(seconds) + (match[2].matched ? std::stod(match[2].str()) : 0.0);
 }
 
 static bool isWriteFunction(int function) { return function == 6 || function == 16; }
@@ -96,7 +103,7 @@ void OtContext::load(const std::string& path, bool peerOnlyAblation) {
 }
 
 void OtContext::loadHostAlerts(const std::string& path, double lookbackSeconds) {
-    if (!(lookbackSeconds > 0)) throw std::runtime_error("Host alert lookback must be positive");
+    if (!std::isfinite(lookbackSeconds) || !(lookbackSeconds > 0)) throw std::runtime_error("Host alert lookback must be positive");
     hostAlerts_.clear();
     hostLookback_ = lookbackSeconds;
     for (const auto& row : readCsv(path)) {
@@ -146,13 +153,14 @@ ContextDecision OtContext::applyPolicy(const Event& event, const std::vector<Det
     if (event.protocol != "modbus" || !event.isRequest || event.registerAddress < 0 || event.registerValues.empty() ||
         event.registerCount < 1 || event.registerValues.size() != static_cast<std::size_t>(event.registerCount)) return result;
     // Corroborating security evidence is never downgraded by a maintenance ticket.
-    if (!onlyWriteRule(detections)) { result.reason = "Independent security evidence retained"; return result; }
+    const bool independentEvidence = !onlyWriteRule(detections);
     double time;
     try { time = utcSeconds(event.timestamp); }
     catch (...) { result.reason = "Missing or invalid UTC event timestamp"; return result; }
     for (auto& auth : authorizations_) {
         if (event.srcIp != auth.src || event.dstIp != auth.dst) continue;
         if (peerOnly_) {
+            if (independentEvidence) { result.reason = "Independent security evidence retained"; return result; }
             result.policyId = auth.id;
             result.reason = "Peer-only ablation (unsafe): command constraints not checked";
             result.suppressed = detections.size();
@@ -170,6 +178,7 @@ ContextDecision OtContext::applyPolicy(const Event& event, const std::vector<Det
         if (auth.used >= auth.budget) { result.reason = "Authorization command budget exhausted"; return result; }
         if (event.functionCode == 6 && event.registerValues.size() != 1) return result;
         ++auth.used;
+        if (independentEvidence) { result.reason = "Independent security evidence retained"; return result; }
         result.detections.clear();
         result.suppressed = detections.size();
         result.reason = "Approved bounded register write; ticket constraints satisfied";
@@ -181,13 +190,13 @@ ContextDecision OtContext::applyEnvelope(const Event& event, const std::vector<D
     ContextDecision result;
     result.detections = detections;
     const auto& envelope = *envelope_;
-    // Every observed write updates the state, alerted or not, so a change is judged against the actual sequence.
-    auto& previous = lastWrite_[event.unitId];
-    const bool changed = !previous.empty() && previous != event.processValues;
-    previous = event.processValues;
     if (event.unitId != envelope.unit ||
         std::find(envelope.functions.begin(), envelope.functions.end(), event.functionCode) == envelope.functions.end())
         return result;
+    // Only matching writes update the previous-write state; reads cannot seed it.
+    auto& previous = lastWrite_[event.unitId];
+    const bool changed = !previous.empty() && previous != event.processValues;
+    previous = event.processValues;
     result.policyId = envelope.id;
     if (!onlyWriteRule(detections)) { result.reason = "Independent security evidence retained"; return result; }
     for (const auto& [name, allowed] : envelope.allowedValues) {

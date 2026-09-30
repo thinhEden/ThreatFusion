@@ -69,6 +69,14 @@ class WorkflowTests(unittest.TestCase):
                 self.assertEqual(error.exception.code, 405)
                 self.assertTrue(json.load(urlopen(Request(url + '/api/clear', method='POST')))['success'])
                 self.assertEqual(json.load(urlopen(url + '/api/alerts')), [])
+                # A current engine row after Clear must survive strict CSV parsing.
+                with DashboardHandler.alerts_file.open('a', newline='') as handle:
+                    csv.writer(handle).writerow(['INC-1', 'after-clear', '2026-09-30T10:00:00Z',
+                        '10.0.0.1', '10.0.0.2', 'plc', 'modbus', 'Command Injection', 'high',
+                        '4.6', '4.2', '0.8', '74', '0.01', 'malicious', 'behavior:BR-001', 'T1692.001'])
+                after = json.load(urlopen(url + '/api/alerts'))
+                self.assertEqual(len(after), 1)
+                self.assertEqual(after[0]['attack_techniques'], 'T1692.001')
                 rules = json.load(urlopen(url + '/api/rules'))
                 self.assertTrue(rules)
                 self.assertTrue(all(row['status'] == 'On disk' for row in rules))

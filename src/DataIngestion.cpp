@@ -211,7 +211,25 @@ static std::vector<Event> loadPcapEvents(const std::string& path, const std::str
         event.registerCount = event.functionCode == 6 ? 1 : columns.size() > 15 ? safeInt(columns[15], -1) : -1;
         event.action = event.isRequest ? "request" : "observed";
         event.label = "";
-        events.push_back(event);
+        // tshark aggregates fields from multiple ADUs in one frame. Their register
+        // fields cannot safely be paired, so retain each function and deny authorization.
+        bool aggregated = false;
+        for (const auto index : {5u, 11u, 12u, 15u})
+            if (columns.size() > index && columns[index].find(',') != std::string::npos) aggregated = true;
+        if (event.protocol == "modbus" && aggregated) {
+            const auto functions = split(columns[5], ',');
+            for (std::size_t i = 0; i < functions.size(); ++i) {
+                auto part = event;
+                part.id += "-ADU-" + std::to_string(i + 1);
+                part.functionCode = safeInt(functions[i], -1);
+                part.unitId = part.registerAddress = part.registerCount = -1;
+                part.registerValues.clear();
+                part.action = "aggregated_modbus_requires_review";
+                events.push_back(std::move(part));
+            }
+        } else {
+            events.push_back(event);
+        }
     }
     return events;
 }

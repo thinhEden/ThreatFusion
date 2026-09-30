@@ -127,3 +127,11 @@ The tests cover policy bounds, UTC window expiry, quota, partial register data, 
 - [Elastic ECS alert categorization](https://www.elastic.co/docs/reference/ecs/ecs-allowed-values-event-kind)
 - [Elastic native custom-query rules](https://www.elastic.co/docs/api/doc/kibana/operation/operation-createrule)
 - [Elastic on-demand rule execution](https://www.elastic.co/docs/explore-analyze/workflows/use-cases/security/manage-detection-rules/run-rules-on-demand)
+
+## Review hardening (2026-10-01)
+
+PCAP frames containing multiple Modbus ADUs retain one event per function with an `-ADU-N` ID suffix. Aggregated register fields are left untrusted, so maintenance policies cannot suppress these events; inspect the original frame for full command evidence. This conservative fallback can add review work until per-ADU field decoding is implemented.
+
+Matching writes consume the maintenance quota even when independent security evidence already retains the alert. Host-alert timestamps accept UTC `Z` with fractional seconds, and read requests do not update the previous-write state used by envelope review.
+
+When appending alerts to an older CSV schema, the engine preserves that file as `.schema-N.bak` and starts a file with the current header. Dashboard Clear uses the current header. Live/imported rows keep their own severity and reason when event IDs repeat across captures.

@@ -9,6 +9,7 @@ import argparse
 import hashlib
 import json
 import subprocess
+import tempfile
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path, PureWindowsPath
@@ -86,14 +87,12 @@ Get-WinEvent -Path $Path -Oldest | ForEach-Object {
 
 def read_evtx(path):
     """Parse a .evtx file with the built-in Get-WinEvent (Windows only; no extra packages)."""
-    script = Path(path).with_suffix('.read.ps1')
-    script.write_text(EVTX_SCRIPT, encoding='utf-8')
-    try:
+    with tempfile.TemporaryDirectory(prefix='threatfusion-evtx-') as folder:
+        script = Path(folder) / 'read.ps1'
+        script.write_text(EVTX_SCRIPT, encoding='utf-8')
         result = subprocess.run(['powershell', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
-                                 '-File', str(script), '-Path', str(path)],
+                                 '-File', str(script), '-Path', str(Path(path).resolve())],
                                 capture_output=True, text=True, encoding='utf-8', check=True, timeout=300)
-    finally:
-        script.unlink(missing_ok=True)
     for line in result.stdout.splitlines():
         if line.strip():
             yield to_ecs(json.loads(line), Path(path).stem, 'windows.evtx_attack_samples')

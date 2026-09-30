@@ -3,14 +3,35 @@ import json
 from pathlib import Path
 import sys
 import unittest
+import tempfile
+import subprocess
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'tools'))
 from attack_coverage import ENTERPRISE
-from normalize_windows_events import to_ecs
+from normalize_windows_events import to_ecs, read_evtx
 
 
 class WindowsNormalizationTests(unittest.TestCase):
+    def test_evtx_reader_preserves_adjacent_script_on_failure(self):
+        with tempfile.TemporaryDirectory() as folder:
+            source = Path(folder) / 'capture.evtx'
+            sibling = source.with_suffix('.read.ps1')
+            sibling.write_text('user script')
+            scripts = []
+            def fail(command, **kwargs):
+                script = Path(command[command.index('-File') + 1])
+                scripts.append(script)
+                self.assertNotEqual(script.parent, source.parent)
+                self.assertTrue(script.is_file())
+                raise subprocess.CalledProcessError(1, command)
+            with patch('normalize_windows_events.subprocess.run', side_effect=fail):
+                with self.assertRaises(subprocess.CalledProcessError):
+                    list(read_evtx(source))
+            self.assertEqual(sibling.read_text(), 'user script')
+            self.assertFalse(scripts[0].exists())
+
     def test_process_fields_come_from_sysmon_4688_and_access_events(self):
         sysmon = to_ecs({'@timestamp': '2020-09-04T20:09:57.060Z', 'EventID': 1, 'Channel': 'Microsoft-Windows-Sysmon/Operational',
                          'Hostname': 'WS5', 'Image': 'C:\\Windows\\System32\\powershell.exe', 'CommandLine': 'powershell -enc AAA',

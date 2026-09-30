@@ -77,6 +77,18 @@ class WorkspaceTests(unittest.TestCase):
         self.assertIsNone(data['rows'][0]['evidence'])
         self.assertIsNone(data['rows'][0]['audit'])
 
+    def test_reused_event_ids_keep_each_alerts_own_evidence(self):
+        text = ('event_id,timestamp,src_ip,dst_ip,risk_score,reasons,attack_techniques\n'
+                'E1,1790762460,10.0.0.1,10.0.0.2,61,first,T1692.001\n'
+                'E1,1790848860,10.0.0.3,10.0.0.2,99,second,T0888\n')
+        imported = self.request('/api/import', {'name':'repeat.csv', 'csv':text})
+        (Path(self.temp.name)/'live.csv').write_text(text)
+        for source in ('live', imported['source']):
+            rows = self.request('/api/workspace?source='+source)['rows']
+            self.assertEqual([(r['risk'],r['reasons'],r['attack']) for r in rows],
+                             [(61,'first',['T1692.001']), (99,'second',['T0888'])])
+            self.assertNotEqual(rows[0]['key'], rows[1]['key'])
+
     def test_cross_origin_and_artifact_allowlist(self):
         request=Request(self.base+'/api/import',data=b'{}',headers={'Origin':'http://other.example'})
         with self.assertRaises(HTTPError) as error: urlopen(request)

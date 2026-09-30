@@ -20,6 +20,16 @@ int main() {
   assert(row[1] == "b,c");
   assert(row[2] == "d\"e");
 
+  {
+    const char* log = "test_schema.csv";
+    writeCsv(log, {"id"}, {{"old"}});
+    appendCsv(log, {"id", "attack"}, {"new", "T1692.001"});
+    assert(readCsv(log).at(0).at("attack") == "T1692.001");
+    assert(readCsv(std::string(log) + ".schema-1.bak").at(0).at("id") == "old");
+    std::remove(log);
+    std::remove((std::string(log) + ".schema-1.bak").c_str());
+  }
+
   const auto parsed = parseJsonEvent(R"({"id":"json-1","payload_path":"C:\\lab\\file\"name.bin","extra_features":[0.25,-2,1e-3]})");
   assert(parsed.extraFeatures.size() == 3);
   assert(parsed.extraFeatures[1] == -2.0);
@@ -88,6 +98,7 @@ int main() {
     assert(context.apply(write, corroborated).detections.size() == 2);
     write.label = "malicious";
     assert(context.apply(write, candidate).suppressed == 1); // Labels are never a context input.
+    assert(context.apply(write, candidate).suppressed == 0); // Corroborated write consumed the first slot.
     std::remove(policy);
   }
 
@@ -129,6 +140,10 @@ int main() {
     context.load(policy);
     assert(context.apply(write, candidate).suppressed == 1);  // First observed write has no prior state.
     assert(context.apply(write, candidate).suppressed == 1);  // Repeated state.
+    auto read = write;
+    read.functionCode = 3;
+    read.processValues["pump"] = 0;
+    context.apply(read, {}); // A read must not replace the previous write state.
     write.processValues["pump"] = 0;
     const auto changed = context.apply(write, candidate);
     assert(changed.suppressed == 0 && changed.reason == "State change retained for review");
@@ -168,6 +183,15 @@ int main() {
     write.srcIp = "10.0.0.1";
     assert(context.apply(write, {}).detections.empty());  // No OT detection, nothing to correlate.
     std::remove(policy);
+    writeCsv(hosts, {"host_ip", "timestamp", "rule_id", "techniques"},
+             {{"10.0.0.1", "2026-09-30T10:01:30.500Z", "WIN-001", "T1059.001"}});
+    context.loadHostAlerts(hosts, 60);
+    write.timestamp = "2026-09-30T10:01:30.499Z";
+    assert(context.apply(write, candidate).suppressed == 1);
+    write.timestamp = "2026-09-30T10:01:30.501Z";
+    assert(context.apply(write, candidate).policyId == "HOST-EVIDENCE");
+    write.timestamp = "2026-09-30T10:02:30.501Z";
+    assert(context.apply(write, candidate).suppressed == 1);
     std::remove(hosts);
   }
 

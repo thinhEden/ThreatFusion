@@ -1,4 +1,6 @@
 import hashlib
+import csv
+import struct
 import json
 import os
 from pathlib import Path
@@ -41,6 +43,30 @@ class PortfolioTests(unittest.TestCase):
         self.assertNotIn('label',json.dumps(document))
         with self.assertRaises(ValueError):
             utc_timestamp('2026-09-30T10:00:00')
+
+    def test_multiple_modbus_commands_cannot_share_authorization(self):
+        from scapy.all import Ether, IP, TCP, Raw, wrpcap
+        engine = Path(os.environ.get('THREATFUSION_ENGINE',ROOT/'build-libtorch/Release/threatfusion.exe'))
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            for first in (6, 3):
+                payload = (struct.pack('!HHHBBHH',1,0,6,1,first,100,55 if first == 6 else 1)
+                           + struct.pack('!HHHBBHH',2,0,6,1,5,999,0xff00))
+                packet = Ether()/IP(src='10.50.1.20',dst='10.50.2.10')/TCP(sport=40000,dport=502,flags='PA')/Raw(payload)
+                packet.time = 1790762460
+                wrpcap(str(folder/'multiple.pcap'), [packet])
+                subprocess.run([str(engine),'--events',str(folder/'multiple.pcap'),'--format','pcap',
+                    '--context',str(ROOT/'docs/portfolio/policy.json'),
+                    '--context-audit',str(folder/'audit.csv'),'--normalized-events',str(folder/'events.jsonl'),
+                    '--alerts',str(folder/'alerts.csv'),'--incidents',str(folder/'incidents.csv'),
+                    '--metrics',str(folder/'metrics.txt')], cwd=ROOT,check=True,capture_output=True,timeout=30)
+                events = [json.loads(line) for line in (folder/'events.jsonl').read_text().splitlines()]
+                self.assertEqual([e['function_code'] for e in events], [first,5])
+                with (folder/'alerts.csv').open() as handle:
+                    ids = {row['event_id'] for row in csv.DictReader(handle)}
+                self.assertIn(events[1]['id'], ids)
+                with (folder/'audit.csv').open() as handle:
+                    self.assertTrue(all(row['suppressed_detections'] == '0' for row in csv.DictReader(handle)))
 
     def test_actual_cpp_pcap_ablation(self):
         engine = Path(os.environ.get('THREATFUSION_ENGINE',ROOT/'build-libtorch/Release/threatfusion.exe'))

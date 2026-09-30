@@ -16,7 +16,7 @@ from dashboard_store import WorkspaceStore
 from dashboard_data import snapshot, json_data
 
 ROOT = Path(__file__).resolve().parents[1]
-HEADERS = 'incident_id,event_id,timestamp,src_ip,dst_ip,asset_role,protocol,classification,top_severity,asset_criticality,threat_severity,confidence_score,risk_score,latency_ms,verdict,reasons'
+HEADERS = 'incident_id,event_id,timestamp,src_ip,dst_ip,asset_role,protocol,classification,top_severity,asset_criticality,threat_severity,confidence_score,risk_score,latency_ms,verdict,reasons,attack_techniques'
 LOG_LOCK = threading.Lock()
 
 

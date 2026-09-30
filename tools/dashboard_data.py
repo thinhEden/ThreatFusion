@@ -85,7 +85,7 @@ def snapshot(source, portfolio, live_rows, total, store, imports_dir, events_pat
             if event and timestamp(event.get('timestamp')) != timestamp(raw.get('timestamp')):
                 event = None
         action = 'suppressed' if decision and int(decision['suppressed_detections']) > 0 and identity not in retained else 'retained'
-        active = retained.get(identity,raw)
+        active = retained.get(identity,raw) if kind == 'recorded_lab' else raw
         rows.append({
             'key':digest, 'event_id':identity, 'timestamp':timestamp(raw.get('timestamp')),
             'source_ip':raw.get('src_ip'), 'destination_ip':raw.get('dst_ip'),
