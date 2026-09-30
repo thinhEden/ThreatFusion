@@ -1,0 +1,11 @@
+{
+  "name": "threatfusion-soc-dashboard",
+  "private": true,
+  "scripts": {
+    "build": "node build.cjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.0",
+    "prettier": "^3.5.3"
+  }
+}

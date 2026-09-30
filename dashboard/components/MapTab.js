@@ -1,180 +1,58 @@
-// OT Network Topology Map Component
-function RenderMapTab({ alerts, simActive }) {
+function RenderMapTab({ alerts }) {
   const canvasRef = React.useRef(null);
-  
   React.useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    
-    let animationFrameId;
-    let packetProgress = 0;
-
-    const getStatusColor = (status) => {
-      if (status === 'Critical' || status === 'High') return '#f43f5e'; // Red
-      if (status === 'Medium') return '#fb923c'; // Orange
-      if (status === 'Low') return '#3b82f6'; // Blue
-      return '#00b4d8'; // Cyan (Clean)
+    const assets = window.deriveAssets(alerts);
+    const resize = () => {
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = Math.max(300, Math.ceil(assets.length / Math.max(1, Math.floor(canvas.width / 180))) * 140);
+      draw();
     };
-
-    const getMaximumSeverity = (ip, descFilter = null) => {
-      const nodeAlerts = alerts.filter(a => {
-        const matchesIp = a.source_ip === ip || a.destination_ip === ip;
-        if (!matchesIp) return false;
-        if (descFilter) {
-          const desc = (a.description || '').toLowerCase();
-          const det = (a.detector || '').toLowerCase();
-          const matchesFilter = desc.includes(descFilter) || det.includes(descFilter);
-          if (!matchesFilter) return false;
-        }
-        return true;
-      });
-      if (nodeAlerts.length === 0) return 'Clean';
-      
-      let hasCritical = nodeAlerts.some(a => window.normalizeSeverity(a.severity) === 'Critical');
-      if (hasCritical) return 'Critical';
-      let hasHigh = nodeAlerts.some(a => window.normalizeSeverity(a.severity) === 'High');
-      if (hasHigh) return 'High';
-      let hasMedium = nodeAlerts.some(a => window.normalizeSeverity(a.severity) === 'Medium');
-      if (hasMedium) return 'Medium';
-      return 'Low';
-    };
-
-    function drawTopology() {
+    function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      // Node coordinates and dynamic state
-      const nodes = {
-        hmi: { 
-          x: 150, 
-          y: 200, 
-          label: "SCADA HMI (10.0.0.1)", 
-          role: "Master", 
-          status: getMaximumSeverity("10.0.0.1")
-        },
-        plc: { 
-          x: 550, 
-          y: 120, 
-          label: "Water Pump PLC (10.0.0.2)", 
-          role: "Slave", 
-          status: getMaximumSeverity("10.0.0.2", "pump")
-        },
-        rtu: { 
-          x: 550, 
-          y: 280, 
-          label: "Telemetry RTU (10.0.0.2)", 
-          role: "Slave", 
-          status: getMaximumSeverity("10.0.0.2", "psi")
-        },
-        workstation: { 
-          x: 350, 
-          y: 80, 
-          label: "Eng Workstation (10.0.0.11)", 
-          role: "Operator", 
-          status: getMaximumSeverity("10.0.0.11")
-        }
-      };
-
-      // Draw connections
-      ctx.lineWidth = 1.5;
-      
-      // HMI to PLC
-      ctx.strokeStyle = '#22252f';
-      ctx.beginPath();
-      ctx.moveTo(nodes.hmi.x, nodes.hmi.y);
-      ctx.lineTo(nodes.plc.x, nodes.plc.y);
-      ctx.stroke();
-
-      // HMI to RTU
-      ctx.beginPath();
-      ctx.moveTo(nodes.hmi.x, nodes.hmi.y);
-      ctx.lineTo(nodes.rtu.x, nodes.rtu.y);
-      ctx.stroke();
-
-      // Workstation to HMI
-      ctx.beginPath();
-      ctx.moveTo(nodes.workstation.x, nodes.workstation.y);
-      ctx.lineTo(nodes.hmi.x, nodes.hmi.y);
-      ctx.stroke();
-
-      // Animated packets along all active communication paths
-      packetProgress += 0.008;
-      if (packetProgress > 1) packetProgress = 0;
-
-      const links = [
-        { from: nodes.workstation, to: nodes.hmi, isThreat: nodes.workstation.status !== 'Clean' },
-        { from: nodes.hmi, to: nodes.plc, isThreat: nodes.hmi.status !== 'Clean' || nodes.plc.status !== 'Clean' },
-        { from: nodes.hmi, to: nodes.rtu, isThreat: nodes.hmi.status !== 'Clean' || nodes.rtu.status !== 'Clean' }
-      ];
-
-      links.forEach(link => {
-        const pX = link.from.x + (link.to.x - link.from.x) * packetProgress;
-        const pY = link.from.y + (link.to.y - link.from.y) * packetProgress;
-        
-        ctx.fillStyle = link.isThreat ? '#f43f5e' : '#00b4d8';
-        ctx.beginPath();
-        ctx.arc(pX, pY, 4, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
-      // Draw Nodes
-      Object.entries(nodes).forEach(([key, node]) => {
-        const isAlerting = node.status !== 'Clean' && node.status !== 'Low';
-        const color = getStatusColor(node.status);
-
-        if (isAlerting) {
-          ctx.shadowBlur = 15;
-          ctx.shadowColor = color;
-          ctx.fillStyle = color + '22'; // Flashing alpha glow
-          ctx.beginPath();
-          ctx.arc(node.x, node.y, 24, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = '#11131a';
-        ctx.strokeStyle = isAlerting ? color : '#22252f';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, 16, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, 6, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = '#e2e4ea';
-        ctx.font = 'bold 10px Inter';
-        ctx.textAlign = 'center';
-        ctx.fillText(node.label, node.x, node.y - 24);
-        
+      if (!assets.length) {
         ctx.fillStyle = '#7c8293';
-        ctx.font = '9px JetBrains Mono';
-        ctx.fillText(`[${node.role}]`, node.x, node.y + 28);
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('No observed endpoints', canvas.width / 2, 150);
+        return;
+      }
+      const columns = Math.max(1, Math.floor(canvas.width / 180));
+      const positions = new Map(assets.map((a, i) => [a.ip, {
+        x: (i % columns + .5) * canvas.width / columns,
+        y: 70 + Math.floor(i / columns) * 140,
+      }]));
+      const links = new Set();
+      ctx.strokeStyle = '#394451';
+      alerts.forEach(a => {
+        const from = positions.get(a.source_ip), to = positions.get(a.destination_ip);
+        const key = [a.source_ip, a.destination_ip].sort().join('|');
+        if (!from || !to || links.has(key)) return;
+        links.add(key);
+        ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
       });
-
-      animationFrameId = requestAnimationFrame(drawTopology);
+      assets.forEach(a => {
+        const pos = positions.get(a.ip);
+        ctx.fillStyle = '#11131a';
+        ctx.strokeStyle = a.risk >= 60 ? '#ef4444' : '#06b6d4';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(pos.x, pos.y, 16, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.textAlign = 'center'; ctx.font = '12px monospace'; ctx.fillStyle = '#e2e4ea';
+        ctx.fillText(a.ip, pos.x, pos.y + 38);
+        ctx.font = '10px sans-serif'; ctx.fillStyle = '#7c8293';
+        ctx.fillText(a.risk === null ? 'Risk unavailable' : 'Risk ' + a.risk, pos.x, pos.y + 56);
+      });
     }
-
-    drawTopology();
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [alerts, simActive]);
-
+    resize();
+    window.addEventListener('resize', resize);
+    return () => window.removeEventListener('resize', resize);
+  }, [alerts]);
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-bold text-white">OT Network Topology Map</h2>
-        <p className="text-xs text-siemMuted">Visual mapping of SCADA master polling and RTU/PLC slave response paths</p>
-      </div>
-
-      <div className="bg-siemCard border border-siemBorder rounded p-5 flex justify-center items-center shadow-lg">
-        <canvas ref={canvasRef} width="700" height="400" className="bg-slate-950/50 rounded border border-siemBorder max-w-full"></canvas>
-      </div>
+    <div className="space-y-4">
+      <h2 className="text-lg font-bold text-white">Observed OT Endpoints</h2>
+      <div className="w-full min-w-0"><canvas ref={canvasRef} className="w-full block" /></div>
     </div>
   );
 }
-
-// Bind to window for global availability
 window.RenderMapTab = RenderMapTab;
