@@ -1,0 +1,36 @@
+name: threatfusion-siem
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.3.1
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:?Run tools/siem_elastic.py setup first}
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - cluster.routing.allocation.disk.threshold_enabled=false
+    ports:
+      - "127.0.0.1:19200:9200"
+    volumes:
+      - elastic-data:/usr/share/elasticsearch/data
+    mem_limit: 1536m
+  kibana:
+    image: docker.elastic.co/kibana/kibana:9.3.1
+    environment:
+      ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
+      ELASTICSEARCH_USERNAME: kibana_system
+      ELASTICSEARCH_PASSWORD: ${KIBANA_PASSWORD:?Run setup first}
+      XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: ${KIBANA_KEY:?Run setup first}
+      XPACK_SECURITY_ENCRYPTIONKEY: ${KIBANA_KEY}
+      XPACK_REPORTING_ENCRYPTIONKEY: ${KIBANA_KEY}
+      TELEMETRY_ENABLED: "false"
+    ports:
+      - "127.0.0.1:15601:5601"
+    volumes:
+      - ./kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+    mem_limit: 1536m
+    depends_on:
+      - elasticsearch
+volumes:
+  elastic-data:

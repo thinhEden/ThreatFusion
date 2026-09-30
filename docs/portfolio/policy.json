@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "provenance": "Independent simulated commissioning ticket; not learned from attack labels",
+  "authorizations": [
+    {
+      "ticket_id": "CHG-OT-2026-001",
+      "source_ip": "10.50.1.20",
+      "destination_ip": "10.50.2.10",
+      "unit_id": 1,
+      "function_codes": [
+        6
+      ],
+      "register_start": 100,
+      "register_end": 101,
+      "value_min": 50,
+      "value_max": 60,
+      "start_utc": "2026-09-30T10:00:00Z",
+      "end_utc": "2026-09-30T10:10:00Z",
+      "max_commands": 60
+    }
+  ]
+}

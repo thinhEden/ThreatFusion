@@ -1,0 +1,26 @@
+{
+  "total": 255,
+  "variants": [
+    {
+      "key": "baseline",
+      "doc_count": 145
+    },
+    {
+      "key": "bounded",
+      "doc_count": 80
+    },
+    {
+      "key": "peer-only",
+      "doc_count": 30
+    }
+  ],
+  "native_security_alerts": 80,
+  "investigation_query_counts": {
+    "engineering_baseline": 115,
+    "retained_contextual": 80,
+    "unknown_source": 60,
+    "dangerous_values": 20,
+    "counterexample": 5
+  },
+  "kibana": "available"
+}
