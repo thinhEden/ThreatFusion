@@ -28,6 +28,20 @@ Report MSU scores as capture-specific novelty detection, next to those single-fe
 
 `tools/benchmark_gas2015.py` splits the capture by time. It derives an operating envelope from benign training writes only, then scores the validation and test requests with the C++ engine. See [the results](../docs/benchmarks/gas2015_context_report.md).
 
+## Windows Host Logs (OTRF Security-Datasets)
+
+`Windows_OTRF/` holds five host captures from [OTRF Security-Datasets](https://github.com/OTRF/Security-Datasets) (MIT licence). They were downloaded on 2026-09-30 from `datasets/atomic/windows/<tactic>/host/`:
+
+| File | OTRF ID | OTRF technique |
+|---|---|---|
+| `psh_lsass_memory_dump_comsvcs.zip` | SDWIN-201018195009 | T1003.001 |
+| `empire_mimikatz_logonpasswords.zip` | SDWIN-190518202151 | T1003.001 |
+| `empire_schtasks_creation_standard_user.zip` | SDWIN-190319024742 | T1053.005 |
+| `empire_psexec_dcerpc_tcp_svcctl.zip` | SDWIN-190518210652 | T1021 |
+| `empire_launcher_vbs.zip` | SDWIN-190518182022 | T1059.005 |
+
+SHA-256 hashes are recorded in `docs/benchmarks/windows_detection_report.json`. `tools/normalize_windows_events.py` converts the NXLog JSON to ECS and keeps the raw fields under `winlog.event_data`. The comsvcs capture has no time zone on `TimeCreated`, so it is treated as UTC for ordering only.
+
 ## SWaT Kaggle Mirror
 
 Local raw paths are configured in `swat_local.json`. The files come from Kaggle [`vishala28/swat-dataset-secure-water-treatment-system`](https://www.kaggle.com/datasets/vishala28/swat-dataset-secure-water-treatment-system) by Vishal Agrawal, created 2025-10-28, with a declared licence of CC0. Kaggle's public API reports these sizes:
