@@ -1,4 +1,5 @@
 name,type,source,recommended_use,notes
-MSU Gas Pipeline,gas pipeline,Mississippi State University ICS dataset,Modbus command attack evaluation,Map packet/log fields to sample schema.
-MSU Water Storage,water storage,Mississippi State University ICS dataset,DNP3/Modbus scenario evaluation,Map packet/log fields to sample schema.
+SWaT,water treatment,"iTrust SUTD SWaT.A1 Dec 2015 via Kaggle mirror https://www.kaggle.com/datasets/vishala28/swat-dataset-secure-water-treatment-system",process anomaly evaluation,"Kaggle sizes match local files; normal.csv duplicates Normal v0/v1 and mixes attack-period rows, so split by deduplicated timestamp. Only merged.csv is needed; it is currently missing locally."
+MSU Gas Pipeline,gas pipeline,"Morris ICS datasets, Dataset 2 (ORNL formatted ModbusRTUfeatureSetsV2.zip); Beaver et al. ICMLA 2013",Modbus command/response/DoS novelty evaluation,"Integrated. Attack blocks appended after benign rows; single-feature shortcuts (SetPoint, TimeInterval) — see docs/benchmarks/msu_data_audit.md."
+MSU Water Storage,water storage,"Morris ICS datasets, Dataset 3 (Morris & Gao 2014)",not recommended without flaw review,"Not integrated. The author warns these files contain unintended patterns that make attacks trivially separable."
 CIC-ICS,industrial IDS dataset,CIC research dataset,broader IDS benchmarking,Use train/test split and report FP/FN separately.
