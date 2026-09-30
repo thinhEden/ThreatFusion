@@ -1,6 +1,7 @@
 # CMake build directories
 build/
 build-libtorch/
+build-status/
 CMakeSettings.json
 
 # Compiled binaries and libraries
@@ -26,6 +27,8 @@ captures/*.json
 captures/*.jsonl
 data/msu_*.jsonl
 data/msu_*.csv
+data/swat_*.jsonl
+data/swat_*.csv
 
 # Python environment and cache
 __pycache__/
@@ -33,6 +36,10 @@ __pycache__/
 venv/
 .venv/
 env/
+siem/elastic/.env
+demo/node_modules/
+dashboard/node_modules/
+build-demo/
 .pytest_cache/
 
 # IDE and Editor settings
