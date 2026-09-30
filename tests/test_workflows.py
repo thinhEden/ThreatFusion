@@ -151,6 +151,70 @@ class WorkflowTests(unittest.TestCase):
                     process.kill()
                     process.communicate()
 
+    def test_stream_alert_log_survives_dashboard_clear_and_stats_count_events(self):
+        # The engine keeps out/alerts_stream.csv open; the dashboard's Clear truncates it to a header.
+        from dashboard_server import HEADERS
+        engine = Path(os.environ.get('THREATFUSION_ENGINE', ROOT / 'build-libtorch/Release/threatfusion.exe'))
+        self.assertTrue(engine.exists(), 'Build the engine before this integration test')
+        with tempfile.TemporaryDirectory() as folder:
+            work = Path(folder)
+            probe = socket.socket()
+            probe.bind(('127.0.0.1', 0))
+            port = probe.getsockname()[1]
+            probe.close()
+            process = subprocess.Popen([str(engine.resolve()), '--mode', 'stream', '--port', str(port),
+                                        '--iocs', str(ROOT / 'data/iocs.csv'), '--rules', str(ROOT / 'data/behavior_rules.csv'),
+                                        '--stats', str(work / 'stats.csv'), '--stats-interval', '0.2'],
+                                       cwd=work, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            write = lambda i: json.dumps({'id': f'write-{i}', 'src_ip': '10.0.0.5', 'dst_ip': '10.0.0.9', 'timestamp': '',
+                                          'protocol': 'modbus', 'asset_role': 'plc', 'function_code': 16, 'bytes': 12}) + '\n'
+            path = work / 'out/alerts_stream.csv'
+
+            def rows(count):
+                for _ in range(100):
+                    if path.exists():
+                        with path.open(newline='') as handle:
+                            found = list(csv.DictReader(handle))
+                        if len(found) >= count:
+                            return found
+                    time.sleep(.05)
+                self.fail(f'Expected {count} stream alerts')
+
+            client = None
+            try:
+                for _ in range(50):
+                    try:
+                        client = socket.create_connection(('127.0.0.1', port), timeout=.1)
+                        break
+                    except OSError:
+                        time.sleep(.1)
+                self.assertIsNotNone(client)
+                client.sendall((write(1) + write(2)).encode())
+                self.assertEqual([r['event_id'] for r in rows(2)], ['write-1', 'write-2'])
+                path.write_text(HEADERS + '\n', encoding='utf-8')
+                client.sendall(write(3).encode())
+                cleared = rows(1)
+                self.assertEqual([r['event_id'] for r in cleared], ['write-3'])
+                self.assertEqual(path.read_text(encoding='utf-8').splitlines()[0], HEADERS)
+                stdout, stderr = process.communicate('\n', timeout=10)
+                self.assertEqual(process.returncode, 0, stderr)
+                with (work / 'stats.csv').open(newline='') as handle:
+                    last = list(csv.DictReader(handle))[-1]
+                self.assertEqual((last['events'], last['alerts']), ('3', '3'))
+                self.assertGreater(float(last['detect_ms_total']), 0)
+            finally:
+                if client is not None:
+                    client.close()
+                if process.poll() is None:
+                    process.kill()
+                    process.communicate()
+
+    def test_stats_export_is_stream_only(self):
+        engine = Path(os.environ.get('THREATFUSION_ENGINE', ROOT / 'build-libtorch/Release/threatfusion.exe'))
+        result = subprocess.run([str(engine), '--stats', 'x.csv'], capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('--stats is a stream-mode export', result.stderr)
+
 
 if __name__ == '__main__':
     unittest.main()

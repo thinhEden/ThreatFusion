@@ -181,7 +181,18 @@ std::vector<Detection> LSTMDetector::evaluate(const Event &event) {
   if (currentFeatures.size() != static_cast<std::size_t>(featureDim_))
     throw std::runtime_error("LSTM event feature dimensions do not match model");
 
-  auto &window = flowWindows_[event.srcIp];
+  auto found = flowWindows_.find(event.srcIp);
+  if (found == flowWindows_.end()) {
+    // Unbounded windows grew ~5 KB per distinct source in the cardinality test; evict the stalest one instead.
+    if (flowWindows_.size() >= maxFlows_) {
+      flowWindows_.erase(std::min_element(flowWindows_.begin(), flowWindows_.end(), [](const auto &a, const auto &b) {
+        return a.second.lastSeen < b.second.lastSeen;
+      }));
+    }
+    found = flowWindows_.emplace(event.srcIp, Flow{}).first;
+  }
+  found->second.lastSeen = ++clock_;
+  auto &window = found->second.window;
 
   // Add current event features to the sliding window
   window.push_back(currentFeatures);
@@ -198,6 +209,13 @@ std::vector<Detection> LSTMDetector::evaluate(const Event &event) {
 
 #ifdef USE_LIBTORCH
   if (torchModule_ != nullptr) {
+    // OpenMP/MKL thread limits are per OS thread. Stream mode infers on the socket thread, which would
+    // otherwise use every core and spin: 6+ cores busy and 3.5x slower than batch in the first measurement.
+    thread_local bool singleThreaded = false;
+    if (!singleThreaded) {
+      at::set_num_threads(1);
+      singleThreaded = true;
+    }
     c10::InferenceMode inferenceGuard;
     auto *module = static_cast<torch::jit::script::Module *>(torchModule_);
 
