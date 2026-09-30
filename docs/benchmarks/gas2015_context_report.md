@@ -46,9 +46,9 @@ NMRI and CMRI are response injections, so they fall outside this request-only ex
 
 | Test variant | p50 ms | p95 ms | p99 ms |
 |---|---:|---:|---:|
-| baseline | 0.0022 | 0.0041 | 0.0085 |
-| envelope | 0.0026 | 0.0055 | 0.0173 |
-| envelope_state_review | 0.0026 | 0.0057 | 0.0125 |
+| baseline | 0.0022 | 0.0047 | 0.0079 |
+| envelope | 0.0027 | 0.0062 | 0.0175 |
+| envelope_state_review | 0.0042 | 0.0071 | 0.0182 |
 
 These timers cover per-event detection and context evaluation in batch mode. They exclude JSON loading, output writes and process startup, and they are a single-host measurement.
 

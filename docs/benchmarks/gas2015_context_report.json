@@ -1,7 +1,7 @@
 {
   "source": "http://www.ece.uah.edu/~thm0009/icsdatasets/IanArffDataset.arff",
   "sha256": "970a7bcd3949d09ac7baff11603538b142f214ee47ed70baf9efb3344f4af459",
-  "engine_sha256": "5a4ccb3f01f7838bace747cf69caed733e9a27cd87b56095edba72051f17d8fe",
+  "engine_sha256": "8f93d89d65be46ceacbfcf1c857a3e5f1a8d9dfcf9dcc318ab057dc9d4599df5",
   "rows": 274628,
   "attack_fraction": 0.21865214034985508,
   "attack_fraction_by_row_decile": [
@@ -72,10 +72,26 @@
             "DoS": 1.0,
             "Recon": 0.4657
           },
+          "attack_ids_by_category": {
+            "DoS": {
+              "T1692.001": 1.0
+            },
+            "MFCI": {},
+            "MPCI": {
+              "T1692.001": 1.0
+            },
+            "MSCI": {
+              "T1692.001": 1.0
+            },
+            "Recon": {
+              "T0888": 0.4294,
+              "T1692.001": 0.0363
+            }
+          },
           "processing_ms": {
-            "p50": 0.0022,
-            "p95": 0.0041,
-            "p99": 0.0073
+            "p50": 0.0026,
+            "p95": 0.005,
+            "p99": 0.018
           },
           "context_decisions": {}
         },
@@ -107,10 +123,22 @@
             "DoS": 0.0,
             "Recon": 0.4657
           },
+          "attack_ids_by_category": {
+            "DoS": {},
+            "MFCI": {},
+            "MPCI": {
+              "T1692.001": 0.8598
+            },
+            "MSCI": {},
+            "Recon": {
+              "T0888": 0.4294,
+              "T1692.001": 0.0363
+            }
+          },
           "processing_ms": {
-            "p50": 0.0027,
-            "p95": 0.0055,
-            "p99": 0.0179
+            "p50": 0.0029,
+            "p95": 0.0066,
+            "p99": 0.0084
           },
           "context_decisions": {
             "Write inside commissioned operating envelope": 11264,
@@ -150,10 +178,26 @@
             "DoS": 0.0491,
             "Recon": 0.4657
           },
+          "attack_ids_by_category": {
+            "DoS": {
+              "T1692.001": 0.0491
+            },
+            "MFCI": {},
+            "MPCI": {
+              "T1692.001": 0.955
+            },
+            "MSCI": {
+              "T1692.001": 0.2597
+            },
+            "Recon": {
+              "T0888": 0.4294,
+              "T1692.001": 0.0363
+            }
+          },
           "processing_ms": {
-            "p50": 0.0027,
-            "p95": 0.0057,
-            "p99": 0.0201
+            "p50": 0.0029,
+            "p95": 0.0067,
+            "p99": 0.0093
           },
           "context_decisions": {
             "Write inside commissioned operating envelope": 10313,
@@ -207,10 +251,26 @@
             "DoS": 1.0,
             "Recon": 0.4864
           },
+          "attack_ids_by_category": {
+            "DoS": {
+              "T1692.001": 1.0
+            },
+            "MFCI": {},
+            "MPCI": {
+              "T1692.001": 1.0
+            },
+            "MSCI": {
+              "T1692.001": 1.0
+            },
+            "Recon": {
+              "T0888": 0.4486,
+              "T1692.001": 0.0377
+            }
+          },
           "processing_ms": {
             "p50": 0.0022,
-            "p95": 0.0041,
-            "p99": 0.0085
+            "p95": 0.0047,
+            "p99": 0.0079
           },
           "context_decisions": {}
         },
@@ -242,10 +302,22 @@
             "DoS": 0.0,
             "Recon": 0.4864
           },
+          "attack_ids_by_category": {
+            "DoS": {},
+            "MFCI": {},
+            "MPCI": {
+              "T1692.001": 0.7893
+            },
+            "MSCI": {},
+            "Recon": {
+              "T0888": 0.4486,
+              "T1692.001": 0.0377
+            }
+          },
           "processing_ms": {
-            "p50": 0.0026,
-            "p95": 0.0055,
-            "p99": 0.0173
+            "p50": 0.0027,
+            "p95": 0.0062,
+            "p99": 0.0175
           },
           "context_decisions": {
             "Write inside commissioned operating envelope": 11061,
@@ -285,10 +357,26 @@
             "DoS": 0.0605,
             "Recon": 0.4864
           },
+          "attack_ids_by_category": {
+            "DoS": {
+              "T1692.001": 0.0605
+            },
+            "MFCI": {},
+            "MPCI": {
+              "T1692.001": 0.9292
+            },
+            "MSCI": {
+              "T1692.001": 0.2086
+            },
+            "Recon": {
+              "T0888": 0.4486,
+              "T1692.001": 0.0377
+            }
+          },
           "processing_ms": {
-            "p50": 0.0026,
-            "p95": 0.0057,
-            "p99": 0.0125
+            "p50": 0.0042,
+            "p95": 0.0071,
+            "p99": 0.0182
           },
           "context_decisions": {
             "State change retained for review": 1005,

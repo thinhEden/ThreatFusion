@@ -48,6 +48,16 @@ def confusion(truth, flagged):
             'false_positive_rate': fp / (fp + tn) if fp + tn else 0.0}
 
 
+def attack_ids_by_category(truth, flagged):
+    """Share of each attack category's packets whose alert carries a given ATT&CK ID."""
+    result = {}
+    for category in sorted({t['category'] for t in truth} - {'Normal'}):
+        packets = [t['event_id'] for t in truth if t['category'] == category]
+        ids = Counter(i for p in packets for i in flagged.get(p, ()))
+        result[category] = {i: round(n / len(packets), 4) for i, n in sorted(ids.items())}
+    return result
+
+
 def percentile(values, q):
     return values[max(0, math.ceil(q * len(values)) - 1)]
 
@@ -64,7 +74,9 @@ def run_variant(engine, folder, split, variant, threshold):
     result = subprocess.run(command, capture_output=True, text=True, check=True, timeout=600, cwd=ROOT)
     Path(f'{prefix}.engine.log').write_text(result.stdout + result.stderr, encoding='utf-8')
     with open(f'{prefix}.alerts.csv', newline='', encoding='utf-8') as handle:
-        flagged = {r['event_id'] for r in csv.DictReader(handle) if int(r['risk_score']) >= threshold}
+        # Alerted event -> MITRE ATT&CK IDs the engine attached to it.
+        flagged = {r['event_id']: set(filter(None, r.get('attack_techniques', '').split('|')))
+                   for r in csv.DictReader(handle) if int(r['risk_score']) >= threshold}
     with open(f'{prefix}.timings.csv', newline='', encoding='utf-8') as handle:
         timings = sorted(float(r['processing_ms']) for r in csv.DictReader(handle))
     reasons = Counter()
@@ -145,6 +157,7 @@ def main():
                 'fc16_writes': confusion([t for t in truth if t['event_id'] in writes], flagged),
                 'recall_by_category': {c: round(float(np.mean([t['event_id'] in flagged for t in truth if t['category'] == c])), 4)
                                        for c in CATEGORIES.values() if c != 'Normal' and any(t['category'] == c for t in truth)},
+                'attack_ids_by_category': attack_ids_by_category(truth, flagged),
                 'processing_ms': timing, 'context_decisions': reasons}
     report['envelope'] = derive_envelope(train_writes, False)['operating_envelope']['parameters']
     Path(f'{args.report}.json').write_text(json.dumps(report, indent=2), encoding='utf-8')

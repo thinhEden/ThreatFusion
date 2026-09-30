@@ -27,6 +27,7 @@ ThreatFusion AI is a high-performance C++ security engine designed for **Operati
 | **Risk Scoring** | `Asset Criticality × Threat Severity × Confidence Score` (0–100), with multi-detection correlation boost |
 | **SOC Workspace** | Alert queue, investigation evidence, persistent analyst triage/cases, OT context audit, evaluation and SIEM pivots |
 | **Evaluation** | Confusion matrix (TP/TN/FP/FN), Precision, Recall, F1, Accuracy, FPR, detection latency (avg/p95/max) |
+| **MITRE ATT&CK** | Every detection is mapped to ATT&CK for ICS v19 technique or software IDs. The IDs appear in the alert CSV, in ECS `threat.*` in Elastic and in the dashboard; coverage is measured on public data |
 
 ---
 
@@ -252,6 +253,27 @@ python tools/benchmark_gas2015.py --engine build-libtorch/Release/threatfusion.e
 | + envelope, state changes kept for review | 594 | 0.665 | 0.209 | 0.929 |
 
 The envelope removes every false positive but misses all state-command injections (MSCI) and DoS writes. Those attacks use values that operators also use, and serial Modbus has no authenticated source. The validation window shows the same pattern. The full protocol, per-category results and limits are in the [report](docs/benchmarks/gas2015_context_report.md).
+
+---
+
+## MITRE ATT&CK Coverage and Incident Response
+
+[`data/attack_mapping.csv`](data/attack_mapping.csv) maps every behaviour rule, Suricata SID and YARA rule to ATT&CK for ICS v19 technique or software IDs. Each mapping has a confidence level and a rationale. ATT&CK v19 revoked T0855/T0856/T0857; this repository uses their replacements, T1692.001, T1692.002 and T1693.001. The engine attaches the IDs to each alert (`--attack-map`, loaded by default).
+
+```powershell
+python tools/attack_coverage.py
+```
+
+The command regenerates the [coverage report](docs/attack/coverage.md) and an [ATT&CK Navigator layer](docs/attack/threatfusion_ics_layer.json). A technique counts as detected only when public-data alerts carry that technique's ID. For example, DoS writes in the MSU 2015 capture are caught by the generic write rule, so T0814 is reported as detected indirectly, not as covered. T1692.002 (spoofed reporting messages) is a documented gap.
+
+[Incident response playbooks](docs/playbooks/README.md) follow NIST SP 800-61r3 (CSF 2.0) and SP 800-82r3 OT safety constraints:
+
+- unauthorized OT command;
+- phishing reaching an engineering workstation;
+- malware on an engineering workstation;
+- brute force and account misuse.
+
+The Windows queries in the three IT playbooks are templates until the Windows/Sysmon dataset is integrated.
 
 ---
 
