@@ -19,10 +19,10 @@ Legitimate engineering writes flood OT analysts with alerts. **Can operational c
 | Does an operating envelope remove write false positives on public data? | MSU New Gas Pipeline 2015: 274,628 Modbus packets, split by time | FP fell from 9,723 to **0**, but write recall fell from 1.000 to 0.516. **Every** state-command injection (MSCI) was missed because it reuses operator values. | [Gas Pipeline 2015](docs/benchmarks/gas2015_context_report.md) |
 | Does bounded maintenance authorisation work? | Lab Modbus/TCP PCAP (synthetic) | FP fell from 60 to **0** and all 80 explicit violations were kept. All 5 approved-looking commands from a compromised workstation were missed. | [Lab report](docs/portfolio/report.md) |
 | Does host evidence close that gap? | Lab PCAP plus one real OTRF detection on a constructed timeline | All 5 commands were recovered. The cost was 54 maintenance writes returned to review. | [Runbook](docs/PORTFOLIO_RUNBOOK.md) |
-| Do the Windows detections fire on real attack logs? | 5 OTRF captures and 1 EVTX-ATTACK-SAMPLES capture (13,925 events) | 7 rules (6 EQL, 1 ES\|QL). An analyst confirmed all 17 hits. Elastic Security raised the same alerts. | [Windows evaluation](docs/benchmarks/windows_detection_report.md) |
-| Did the ML models learn attack behaviour? | MSU ModbusRTUfeatureSetsV2, byte-identical to the official archive | **No evidence.** A one-feature `TimeInterval` rule (F1 0.977-0.998) beats every Isolation Forest and LSTM model. | [Data audit](docs/benchmarks/msu_data_audit.md) |
+| Do the Windows detections fire on real attack logs? | 5 OTRF captures and 1 EVTX-ATTACK-SAMPLES capture (13,925 events) | 7 rules (6 EQL, 1 ES\|QL). All 17 hits have recorded review dispositions in the evaluation report. Elastic Security raised the same alerts. | [Windows evaluation](docs/benchmarks/windows_detection_report.md) |
+| Did the ML models learn attack behaviour? | MSU ModbusRTUfeatureSetsV2, byte-identical to the official archive | **No evidence.** A one-feature `TimeInterval` rule (F1 0.977-0.998) beats the evaluated models using all features. | [Data audit](docs/benchmarks/msu_data_audit.md) |
 
-Every rule is mapped to MITRE ATT&CK (ICS v19 and Enterprise). A technique counts as covered only when public-data alerts carry its ID:
+The mapping inventory records ATT&CK IDs, confidence and rationale where the rule evidence supports them; BR-004 intentionally has no technique mapping. Public-data evidence distinguishes detections carrying the technique ID from indirect detections:
 
 - **Confirmed:** T1692.001 and T0888.
 - **Detected under another technique:** T0814, T0836 and T0846.
@@ -40,7 +40,7 @@ See the [ATT&CK coverage report](docs/attack/coverage.md). Four [incident respon
 
 ## Quick Start
 
-This path takes about one minute and needs no LibTorch, Docker or tshark:
+The build and benchmark took about one minute on the development machine with prerequisites installed; setup time varies. This path needs a C++17 compiler, CMake, Python and NumPy, without LibTorch, Docker or tshark:
 
 ```powershell
 cmake -S . -B build
