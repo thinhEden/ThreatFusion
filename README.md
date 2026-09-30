@@ -273,7 +273,23 @@ The command regenerates the [coverage report](docs/attack/coverage.md) and an [A
 - malware on an engineering workstation;
 - brute force and account misuse.
 
-The Windows queries in the three IT playbooks are templates until the Windows/Sysmon dataset is integrated.
+### Windows Host Detections
+
+Six EQL rules in [`siem/elastic/windows_rules.json`](siem/elastic/windows_rules.json) cover:
+
+- encoded PowerShell;
+- LSASS memory access;
+- comsvcs MiniDump;
+- services and scheduled tasks that run an interpreter;
+- script hosts spawning PowerShell.
+
+The rules run on five [OTRF Security-Datasets](https://github.com/OTRF/Security-Datasets) captures (MIT), 13,913 Sysmon and Security events, after they are normalised to ECS (`tools/normalize_windows_events.py`). An analyst dispositioned all 16 hits (16 TP, 0 FP). Each rule lists its expected production false positives. The same rules run as native Elastic Security EQL detections, with ATT&CK Enterprise threat mapping.
+
+```powershell
+python tools/benchmark_windows.py --deploy
+```
+
+These are lab captures with little benign background, so precision 1.0 is not a production false-positive rate. Brute force (PB-04) remains untested. See the [evaluation](docs/benchmarks/windows_detection_report.md) for the full hit list and limits.
 
 ---
 

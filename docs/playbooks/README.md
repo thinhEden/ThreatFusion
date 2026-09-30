@@ -27,6 +27,7 @@ OT response follows [NIST SP 800-82 Rev. 3](https://csrc.nist.gov/pubs/sp/800/82
 ## Status of the Queries
 
 - **PB-01:** runs against data that exists today: the context audit, the PCAP evidence and the `threatfusion-alerts-*` index.
-- **PB-02 to PB-04:** the KQL queries are templates written for Winlogbeat/ECS field names (`event.code`, `winlog.event_data.*`, `process.*`). They will be validated when the Windows/Sysmon dataset is ingested. Until then they are not tested detections.
+- **PB-02 and PB-03:** alerts come from the EQL detections WIN-001 to WIN-006 in `siem/elastic/windows_rules.json`. They are validated on five OTRF captures and deployed to Elastic Security; see the [evaluation](../benchmarks/windows_detection_report.md). The KQL hunting snippets use the same ECS fields as the `threatfusion-windows-otrf` index, but have not been run as saved searches.
+- **PB-04:** remains untested. The OTRF captures contain no brute-force (4625) or Kerberoasting (4769) activity.
 
 The ATT&CK coverage of every rule is listed in [docs/attack/coverage.md](../attack/coverage.md).

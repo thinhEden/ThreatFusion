@@ -6,7 +6,7 @@
 | **ATT&CK** | Enterprise [T1566.001](https://attack.mitre.org/techniques/T1566/001/) Spearphishing Attachment, [T1566.002](https://attack.mitre.org/techniques/T1566/002/) Spearphishing Link, [T1204.002](https://attack.mitre.org/techniques/T1204/002/) Malicious File; ICS [T0865](https://attack.mitre.org/techniques/T0865/) Spearphishing Attachment, [T0863](https://attack.mitre.org/techniques/T0863/) User Execution |
 | **Roles** | SOC L1, SOC L2, email administrator, workstation owner, and the OT engineer if the host has OT access |
 
-KQL below is a template for Winlogbeat/Sysmon ECS fields. It is not yet validated (see [README](README.md)).
+The detections are WIN-006 (a script host spawning PowerShell) and WIN-001 (encoded PowerShell), both validated on OTRF data. The KQL hunting snippets below have not been run as saved searches (see [README](README.md)).
 
 ## 1. Triage (DE.AE)
 
