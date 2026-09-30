@@ -28,13 +28,51 @@ static double utcSeconds(const std::string& value) {
 #endif
 }
 
+static bool isWriteFunction(int function) { return function == 6 || function == 16; }
+
+// Only the write-command rule may be downgraded; any other evidence keeps the alert.
+static bool onlyWriteRule(const std::vector<Detection>& detections) {
+    return std::all_of(detections.begin(), detections.end(), [](const Detection& d) {
+        return d.source == "behavior" && d.indicator == "BR-001";
+    });
+}
+
+static OtContext::Envelope parseEnvelope(const nlohmann::json& entry) {
+    OtContext::Envelope envelope;
+    envelope.id = entry.at("id");
+    envelope.unit = entry.at("unit_id");
+    envelope.functions = entry.at("function_codes").get<std::vector<int>>();
+    envelope.retainStateChanges = entry.value("retain_state_changes", false);
+    for (const auto& item : entry.at("parameters").items()) {
+        const auto& spec = item.value();
+        if (spec.contains("values")) {
+            auto values = spec.at("values").get<std::vector<double>>();
+            if (values.empty()) throw std::runtime_error("Envelope value set is empty: " + item.key());
+            envelope.allowedValues[item.key()] = std::move(values);
+        } else {
+            const double minimum = spec.at("min"), maximum = spec.at("max");
+            if (!std::isfinite(minimum) || !std::isfinite(maximum) || minimum > maximum)
+                throw std::runtime_error("Invalid envelope range: " + item.key());
+            envelope.ranges[item.key()] = {minimum, maximum};
+        }
+    }
+    if (envelope.id.empty() || envelope.unit < 0 || envelope.unit > 255 || envelope.functions.empty() ||
+        envelope.allowedValues.size() + envelope.ranges.size() == 0 ||
+        !std::all_of(envelope.functions.begin(), envelope.functions.end(), isWriteFunction))
+        throw std::runtime_error("Invalid OT operating envelope");
+    return envelope;
+}
+
 void OtContext::load(const std::string& path, bool peerOnlyAblation) {
     std::ifstream file(path);
     if (!file) throw std::runtime_error("Cannot load OT context: " + path);
     const auto data = nlohmann::json::parse(file);
     authorizations_.clear();
+    envelope_.reset();
+    lastWrite_.clear();
     peerOnly_ = peerOnlyAblation;
-    for (const auto& entry : data.at("authorizations")) {
+    if (data.contains("operating_envelope")) envelope_ = parseEnvelope(data.at("operating_envelope"));
+    for (const auto& entry : data.value("authorizations", nlohmann::json::array())) {
         Authorization auth;
         auth.id = entry.at("ticket_id"); auth.src = entry.at("source_ip"); auth.dst = entry.at("destination_ip");
         auth.unit = entry.at("unit_id"); auth.firstRegister = entry.at("register_start"); auth.lastRegister = entry.at("register_end");
@@ -45,7 +83,7 @@ void OtContext::load(const std::string& path, bool peerOnlyAblation) {
             auth.firstRegister < 0 || auth.lastRegister > 65535 || auth.firstRegister > auth.lastRegister ||
             auth.minimum < 0 || auth.maximum > 65535 || auth.minimum > auth.maximum || auth.start >= auth.end || auth.budget <= 0 || auth.functions.empty())
             throw std::runtime_error("Invalid OT authorization");
-        for (int function : auth.functions) if (function != 6 && function != 16)
+        for (int function : auth.functions) if (!isWriteFunction(function))
             throw std::runtime_error("Only register writes (6/16) can be authorized by this policy");
         for (const auto& existing : authorizations_) {
             if (existing.src == auth.src && existing.dst == auth.dst && existing.unit == auth.unit &&
@@ -57,14 +95,14 @@ void OtContext::load(const std::string& path, bool peerOnlyAblation) {
 }
 
 ContextDecision OtContext::apply(const Event& event, const std::vector<Detection>& detections) {
+    if (envelope_ && event.protocol == "modbus" && event.isRequest && !event.processValues.empty())
+        return applyEnvelope(event, detections);
     ContextDecision result;
     result.detections = detections;
     if (event.protocol != "modbus" || !event.isRequest || event.registerAddress < 0 || event.registerValues.empty() ||
         event.registerCount < 1 || event.registerValues.size() != static_cast<std::size_t>(event.registerCount)) return result;
     // Corroborating security evidence is never downgraded by a maintenance ticket.
-    if (std::any_of(detections.begin(), detections.end(), [](const Detection& d) {
-        return !(d.source == "behavior" && d.indicator == "BR-001");
-    })) { result.reason = "Independent security evidence retained"; return result; }
+    if (!onlyWriteRule(detections)) { result.reason = "Independent security evidence retained"; return result; }
     double time;
     try { time = utcSeconds(event.timestamp); }
     catch (...) { result.reason = "Missing or invalid UTC event timestamp"; return result; }
@@ -93,6 +131,39 @@ ContextDecision OtContext::apply(const Event& event, const std::vector<Detection
         result.reason = "Approved bounded register write; ticket constraints satisfied";
         return result;
     }
+    return result;
+}
+ContextDecision OtContext::applyEnvelope(const Event& event, const std::vector<Detection>& detections) {
+    ContextDecision result;
+    result.detections = detections;
+    const auto& envelope = *envelope_;
+    // Every observed write updates the state, alerted or not, so a change is judged against the actual sequence.
+    auto& previous = lastWrite_[event.unitId];
+    const bool changed = !previous.empty() && previous != event.processValues;
+    previous = event.processValues;
+    if (event.unitId != envelope.unit ||
+        std::find(envelope.functions.begin(), envelope.functions.end(), event.functionCode) == envelope.functions.end())
+        return result;
+    result.policyId = envelope.id;
+    if (!onlyWriteRule(detections)) { result.reason = "Independent security evidence retained"; return result; }
+    for (const auto& [name, allowed] : envelope.allowedValues) {
+        const auto value = event.processValues.find(name);
+        if (value == event.processValues.end() || std::find(allowed.begin(), allowed.end(), value->second) == allowed.end()) {
+            result.reason = "Parameter outside operating envelope: " + name;
+            return result;
+        }
+    }
+    for (const auto& [name, range] : envelope.ranges) {
+        const auto value = event.processValues.find(name);
+        if (value == event.processValues.end() || value->second < range.first || value->second > range.second) {
+            result.reason = "Parameter outside operating envelope: " + name;
+            return result;
+        }
+    }
+    if (envelope.retainStateChanges && changed) { result.reason = "State change retained for review"; return result; }
+    result.detections.clear();
+    result.suppressed = detections.size();
+    result.reason = "Write inside commissioned operating envelope";
     return result;
 }
 }

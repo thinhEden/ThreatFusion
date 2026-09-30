@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -29,6 +30,8 @@ struct Event {
     int registerCount = -1;
     std::vector<int> registerValues;
     bool isRequest = false;
+    // Named process parameters decoded from a command or response (e.g. setpoint, pump).
+    std::map<std::string, double> processValues;
 };
 
 } // namespace threatfusion

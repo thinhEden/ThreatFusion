@@ -99,6 +99,15 @@ Event parseJsonEvent(const std::string& line) {
         }
     }
     event.isRequest = data.value("is_request", false);
+    if (data.contains("process_values")) {
+        const auto& values = data.at("process_values");
+        if (!values.is_object()) throw std::runtime_error("Process values must be an object");
+        for (const auto& item : values.items()) {
+            if (!item.value().is_number() || !std::isfinite(item.value().get<double>()))
+                throw std::runtime_error("Process values must be finite numbers");
+            event.processValues[item.key()] = item.value().get<double>();
+        }
+    }
     for (double feature : event.extraFeatures) {
         if (!std::isfinite(feature)) throw std::runtime_error("Feature must be finite");
     }
@@ -113,7 +122,7 @@ std::string eventJson(const Event& event) {
         {"bytes", event.bytes}, {"action", event.action}, {"label", event.label},
         {"extra_features", event.extraFeatures}, {"unit_id", event.unitId},
         {"register_address", event.registerAddress}, {"register_count", event.registerCount}, {"register_values", event.registerValues},
-        {"is_request", event.isRequest}}.dump();
+        {"is_request", event.isRequest}, {"process_values", event.processValues}}.dump();
 }
 
 

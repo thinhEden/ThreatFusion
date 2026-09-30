@@ -90,6 +90,57 @@ int main() {
     std::remove(policy);
   }
 
+  {
+    const auto withProcess = parseJsonEvent(R"({"id":"p","process_values":{"setpoint":12.5,"pump":1}})");
+    assert(withProcess.processValues.at("setpoint") == 12.5 && withProcess.processValues.size() == 2);
+    assert(parseJsonEvent(eventJson(withProcess)).processValues == withProcess.processValues);
+    bool invalidProcess = false;
+    try { parseJsonEvent(R"({"id":"bad","process_values":{"pump":"on"}})"); }
+    catch (...) { invalidProcess = true; }
+    assert(invalidProcess);
+
+    const char* policy = "test_envelope.json";
+    auto writePolicy = [&](bool retainStateChanges) {
+      std::ofstream config(policy);
+      config << R"({"operating_envelope":{"id":"ENV-1","unit_id":4,"function_codes":[16],"retain_state_changes":)"
+             << (retainStateChanges ? "true" : "false")
+             << R"(,"parameters":{"setpoint":{"min":10,"max":20},"pump":{"values":[0,1]}}}})";
+    };
+    writePolicy(false);
+    OtContext context;
+    context.load(policy);
+    Event write;
+    write.protocol = "modbus"; write.isRequest = true; write.unitId = 4; write.functionCode = 16;
+    write.processValues = {{"setpoint", 15}, {"pump", 1}};
+    const std::vector<Detection> candidate = {{"event", "behavior", "BR-001", "high", "Command Injection", "write", .8}};
+    assert(context.apply(write, candidate).suppressed == 1);
+    write.processValues["setpoint"] = 25; assert(context.apply(write, candidate).suppressed == 0);
+    write.processValues["setpoint"] = 15; write.processValues["pump"] = 2;
+    assert(context.apply(write, candidate).suppressed == 0);
+    write.processValues.erase("pump"); assert(context.apply(write, candidate).suppressed == 0); // Missing parameter is retained.
+    write.processValues["pump"] = 1;
+    write.unitId = 5; assert(context.apply(write, candidate).suppressed == 0); write.unitId = 4;
+    auto corroborated = candidate;
+    corroborated.push_back({"event", "threat_intel", "ioc", "critical", "IOC", "evidence", .95});
+    assert(context.apply(write, corroborated).detections.size() == 2);
+
+    writePolicy(true);
+    context.load(policy);
+    assert(context.apply(write, candidate).suppressed == 1);  // First observed write has no prior state.
+    assert(context.apply(write, candidate).suppressed == 1);  // Repeated state.
+    write.processValues["pump"] = 0;
+    const auto changed = context.apply(write, candidate);
+    assert(changed.suppressed == 0 && changed.reason == "State change retained for review");
+    assert(context.apply(write, candidate).suppressed == 1);  // Same state again.
+
+    std::ofstream(policy) << R"({"operating_envelope":{"id":"ENV-1","unit_id":4,"function_codes":[3],"parameters":{"pump":{"values":[0]}}}})";
+    bool invalidEnvelope = false;
+    try { context.load(policy); }
+    catch (...) { invalidEnvelope = true; }
+    assert(invalidEnvelope);
+    std::remove(policy);
+  }
+
   // Test LSTMDetector
   {
     LSTMDetector lstm;
