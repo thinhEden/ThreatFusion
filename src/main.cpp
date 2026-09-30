@@ -76,7 +76,7 @@ struct Options {
 
 static void printUsage() {
   std::cout
-      << "ThreatFusion AI - OT/ICS threat detection prototype\n"
+      << "ThreatFusion - OT/ICS threat detection prototype\n"
       << "Usage: threatfusion [--mode batch|stream] [--port port] [--lstm "
          "path]\n"
       << "                    [--events path] [--format csv|jsonl|pcap] "

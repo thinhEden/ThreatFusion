@@ -301,6 +301,6 @@ int main() {
     printf("[TEST] SocketReceiver started and stopped successfully.\n");
   }
 
-  printf("[TEST] All ThreatFusion-AI tests passed successfully!\n");
+  printf("[TEST] All ThreatFusion tests passed successfully!\n");
   return 0;
 }

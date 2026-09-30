@@ -1,4 +1,4 @@
-# ThreatFusion AI
+# ThreatFusion
 
 **OT/ICS detection engineering, evaluated on public data and reported with its failures.** This project has five parts:
 
@@ -19,8 +19,11 @@ Legitimate engineering writes flood OT analysts with alerts. **Can operational c
 | Does an operating envelope remove write false positives on public data? | MSU New Gas Pipeline 2015: 274,628 Modbus packets, split by time | FP fell from 9,723 to **0**, but write recall fell from 1.000 to 0.516. **Every** state-command injection (MSCI) was missed because it reuses operator values. | [Gas Pipeline 2015](docs/benchmarks/gas2015_context_report.md) |
 | Does bounded maintenance authorisation work? | Lab Modbus/TCP PCAP (synthetic) | FP fell from 60 to **0** and all 80 explicit violations were kept. All 5 approved-looking commands from a compromised workstation were missed. | [Lab report](docs/portfolio/report.md) |
 | Does host evidence close that gap? | Lab PCAP plus one real OTRF detection on a constructed timeline | All 5 commands were recovered. The cost was 54 maintenance writes returned to review. | [Runbook](docs/PORTFOLIO_RUNBOOK.md) |
-| Do the Windows detections fire on real attack logs? | 5 OTRF captures and 1 EVTX-ATTACK-SAMPLES capture (13,925 events) | 7 rules (6 EQL, 1 ES\|QL). All 17 hits have recorded review dispositions in the evaluation report. Elastic Security raised the same alerts. | [Windows evaluation](docs/benchmarks/windows_detection_report.md) |
+| Do the Windows detections fire on real attack logs? | 13 public captures (OTRF, EVTX-to-MITRE-Attack, splunk/attack_data, EVTX-ATTACK-SAMPLES), 14,340 events, 2 of them negative controls | 11 rules (7 EQL, 4 ES\|QL), including Kerberoasting (4769) and NTLM brute force (4625/4776). 81 hits, all dispositioned: 67 TP, 14 FP, all FPs from the per-ticket Kerberoasting rule on an altered capture. The negative controls raise nothing. Elastic Security runs the same rules. | [Windows evaluation](docs/benchmarks/windows_detection_report.md) |
+| Do the playbook hunting queries return what they claim? | The same captures and the lab OT alert index | 11 of 11 hunts match counts taken from raw fields, parsed by Kibana itself. Running them found 3 hunts that could only return zero because the normalizer lacked the ECS fields they use; that is fixed. | [Hunting validation](docs/benchmarks/hunting_query_validation.md) |
+| Does the C++ engine hold up under sustained load? | The Gas Pipeline 2015 test window replayed over TCP with every detector on | One hour at 1,000 events/s: 3.6 million events, none lost, memory flat (172.5 MB at the start, 172.4 MB at the end), 47% of one core. Measuring found four faults, now fixed: stream inference spun on every core, each alert reopened the log file, LSTM memory grew with every new source address, and an uncalibrated AI threshold undid the OT context. | [Engine performance](docs/benchmarks/engine_performance.md) |
 | Did the ML models learn attack behaviour? | MSU ModbusRTUfeatureSetsV2, byte-identical to the official archive | **No evidence.** A one-feature `TimeInterval` rule (F1 0.977-0.998) beats the evaluated models using all features. | [Data audit](docs/benchmarks/msu_data_audit.md) |
+| Does AI catch what the envelope misses, on data without shortcuts? | MSU New Gas Pipeline 2015, same time split, 3 seeds | **No.** Isolation Forest and the LSTM autoencoder reach ROC-AUC 0.61-0.68 and find 2.6-4.2% of attack packets at 1% FPR. Two parameter-free rules find 55% with a similar false-positive count (360), and beat the models on every attack category. | [AI on Gas Pipeline 2015](docs/benchmarks/gas2015_ai_report.md) |
 
 The mapping inventory records ATT&CK IDs, confidence and rationale where the rule evidence supports them; BR-004 intentionally has no technique mapping. Public-data evidence distinguishes detections carrying the technique ID from indirect detections:
 
@@ -32,11 +35,12 @@ See the [ATT&CK coverage report](docs/attack/coverage.md). Four [incident respon
 
 ## What This Does Not Show
 
-- **No real plant.** The lab PCAPs are synthetic, and the public datasets come from laboratory testbeds recorded in 2013-2020.
+- **No real plant.** The lab PCAPs are synthetic, and the public datasets come from laboratory testbeds and attack ranges recorded in 2013-2024.
 - **Lab precision is not production precision.** Precision on lab captures with little benign background is not a production false-positive rate.
 - **The host-evidence result is designed, not measured.** It shows how the correlation works on a constructed timeline, not a detection rate.
-- **C++ performance is measured only per event.** The median is 2-3 µs per event in batch mode on one host, excluding parsing and I/O. Throughput, memory use and long-run stability have not been measured.
-- **Untested:** NTLM brute force (4625), Kerberoasting (4769) and detection of spoofed reporting messages.
+- **Performance is one laptop and one hour.** The numbers come from an i7-10750H with Elasticsearch and Kibana running beside the engine. The soak lasted one hour at a fixed rate, not days, and the engine uses one core per connection.
+- **Windows credential-access samples are small.** Each Kerberoasting or brute-force capture holds one short attack with almost no benign authentication around it, and the splunk Kerberoasting capture was altered after collection. They prove rule logic and field names, not thresholds on domain-controller volume.
+- **Untested:** detection of spoofed reporting messages (T1692.002), and hunts for Office child processes, file drops, lockouts and a success after failures, which no public capture contains (their control queries pass).
 
 ## Quick Start
 
@@ -56,8 +60,11 @@ python tools/benchmark_gas2015.py --engine build/Release/threatfusion.exe --outp
 |---|---|
 | Lab PCAP study, case study and dashboard data | tshark and `pip install -r tools/requirements-demo.txt`, then `python tools/portfolio_demo.py --engine <engine>` |
 | Elastic SIEM ingestion and native alerts | Docker, then `python tools/portfolio_demo.py --engine <engine> --siem` |
-| Windows detections | The Elastic stack above, then `python tools/benchmark_windows.py --deploy`. The EVTX sample is downloaded separately ([datasets](datasets/README.md)); `.evtx` parsing needs Windows. |
+| Windows detections | The Elastic stack above, then `python tools/benchmark_windows.py --deploy`. The GPL-3.0 EVTX sample is downloaded separately ([datasets](datasets/README.md)); `.evtx` parsing needs Windows. |
+| Playbook hunting queries | The Elastic stack after the Windows step, then `python tools/validate_hunting_queries.py` |
 | MSU ML benchmark | A LibTorch build and `pip install -r tools/requirements-research.txt`, then `python tools/benchmark_msu.py --engine <engine>` |
+| AI on Gas Pipeline 2015 | The same LibTorch build and requirements, then `python tools/benchmark_gas2015_ai.py --engine <engine>` |
+| Engine performance | After the AI benchmark, `python tools/benchmark_engine_performance.py --engine <engine>` (includes a one-hour soak; `--soak-seconds` changes it) |
 | Dashboard UI tests | Playwright, as described under [Verification](#verification) |
 
 ## Architecture
@@ -239,6 +246,8 @@ python tools/generate_bacnet_pcap.py
 python tools/collector_daemon.py --input data/msu_events.jsonl --port 8080 --rate 5
 ```
 
+Stream alerts go to `out/alerts_stream.csv`, which stays open and is flushed per alert. `--stats out/stats.csv --stats-interval 1` exports processed events, alerts and detection time every second. `--if-threshold` sets a calibrated Isolation Forest threshold; the 0.55 default is uncalibrated and, on Gas Pipeline 2015, fires on 29% of packets. `--lstm-max-flows` (default 4096) bounds the per-source LSTM windows.
+
 ---
 
 ## SOC Dashboard
@@ -270,6 +279,7 @@ Analyst state is stored locally in SQLite and is separate from both lab ground t
 - MSU ModbusRTUfeatureSetsV2;
 - MSU New Gas Pipeline 2015;
 - OTRF Security-Datasets;
+- EVTX-to-MITRE-Attack (CC0) and splunk/attack_data (Apache-2.0) Kerberoasting and NTLM brute-force samples;
 - the local-only EVTX-ATTACK-SAMPLES capture;
 - the SWaT Kaggle mirror, which is not yet benchmarked.
 
@@ -329,6 +339,50 @@ python tools/benchmark_gas2015.py --engine build-libtorch/Release/threatfusion.e
 
 The envelope removes every false positive but misses all state-command injections (MSCI) and DoS writes. Those attacks use values that operators also use, and serial Modbus has no authenticated source. The validation window shows the same pattern. The full protocol, per-category results and limits are in the [report](docs/benchmarks/gas2015_context_report.md).
 
+### Anomaly Detection on the Same Capture
+
+Does AI find what the envelope misses? The C++ Isolation Forest and the LSTM autoencoder (TorchScript in C++) are trained on benign packets from the same training window, with 23 packet, process and timing features. Every threshold is set at 1% FPR on benign validation packets, and three seeds retrain both models. Two parameter-free baselines use the same benign training data:
+
+- a range rule: an unseen function code, length or address, or any process value outside its training range;
+- a state rule: a mode/scheme/pump/solenoid combination never seen in benign training writes.
+
+```powershell
+python tools/benchmark_gas2015_ai.py --engine build-libtorch/Release/threatfusion.exe
+```
+
+| Test window, all packets | Recall | FP | ROC-AUC |
+| :--- | ---: | ---: | ---: |
+| Isolation Forest | 0.026 ± 0.008 | 391 ± 165 | 0.621 |
+| LSTM autoencoder | 0.026 ± 0.007 | 322 ± 33 | 0.612 |
+| Hybrid | 0.042 ± 0.006 | 327 ± 19 | 0.683 |
+| Range rule + state rule | **0.547** | 360 | n/a |
+
+**The models add nothing the simple rules miss.** No attack category is caught better by any model. Isolation Forest recovers 19% of MSCI requests at 390 false positives; the state rule recovers 39% at 358. Gating the models by the envelope removes their false positives and, with them, every MSCI detection. Many parameter injections change only a value that never varies in benign traffic; Isolation Forest cannot split on a constant feature, while an exact range check catches it. See the [report](docs/benchmarks/gas2015_ai_report.md).
+
+### C++ Engine Performance
+
+The same 54,323 test packets drive batch, stream, source-cardinality and soak measurements. CPU and memory come from the OS for the engine process only; stream counters come from the engine's own `--stats` export.
+
+```powershell
+python tools/benchmark_engine_performance.py --engine build-libtorch/Release/threatfusion.exe
+```
+
+| Measure (i7-10750H, one engine thread) | Rules + OT envelope | Every detector (IF + LSTM) |
+| :--- | ---: | ---: |
+| Batch, end to end, including startup | 26,176 events/s | 1,914 events/s |
+| Batch, p50 / p99 detection per event | 0.003 / 0.013 ms | 0.34 / 0.80 ms |
+| Stream over TCP, median of 3 runs | 29,674 events/s | 2,338 events/s |
+| Soak, 1 h at 1,000 events/s | not run | 0 of 3.6 million events lost, 47% of one core, memory 172.5 → 172.4 MB |
+
+Adding the models, mostly the LSTM, cuts throughput by a factor of about 13. Measuring found four faults, all fixed with regression tests:
+
+- **Stream inference spun on every core.** LibTorch thread limits apply per OS thread, and stream inference runs on the socket thread: 236 events/s at 635% CPU. Now 1,990 events/s on one core with the same detectors.
+- **Every stream alert reopened the log file** and re-read its header. Keeping it open raised the rule path from 4,205 to 29,674 events/s.
+- **LSTM memory grew with every new source address,** about 5 KB each with no limit. `--lstm-max-flows` (default 4,096) evicts the least recently seen source; memory now plateaus from 4,096 sources on.
+- **The Isolation Forest default threshold (0.55) was never calibrated.** On this capture it fires on 29% of packets, and those detections stop the OT context from downgrading approved writes: 12,794 alerts at risk 60 instead of 2,917. `--if-threshold` takes a calibrated value.
+
+See the [performance report](docs/benchmarks/engine_performance.md) for the full tables and limits.
+
 ---
 
 ## MITRE ATT&CK Coverage and Incident Response
@@ -350,22 +404,41 @@ The command regenerates the [coverage report](docs/attack/coverage.md) and an [A
 
 ### Windows Host Detections
 
-Six EQL rules and one ES|QL rule in [`siem/elastic/windows_rules.json`](siem/elastic/windows_rules.json) cover:
+Seven EQL rules and four ES|QL rules in [`siem/elastic/windows_rules.json`](siem/elastic/windows_rules.json) cover:
 
 - encoded PowerShell;
 - LSASS memory access;
 - comsvcs MiniDump;
 - services and scheduled tasks that run an interpreter;
 - script hosts spawning PowerShell;
-- Kerberos password spraying (ES|QL, distinct failed accounts per source).
+- Kerberos password spraying (ES|QL, distinct failed accounts per source);
+- Kerberoasting: an RC4 service ticket for a user service account (EQL), and RC4 tickets for five or more services from one source (ES|QL);
+- password guessing and spraying from failed logons (4625) and from NTLM validation failures on a domain controller (4776).
 
-The rules run on five [OTRF Security-Datasets](https://github.com/OTRF/Security-Datasets) captures (MIT), 13,913 Sysmon and Security events, after they are normalised to ECS (`tools/normalize_windows_events.py`). The spraying rule runs on one local EVTX-ATTACK-SAMPLES capture (GPL-3.0, not committed). An analyst dispositioned all 17 hits (17 TP, 0 FP). Each rule lists its expected production false positives. The same rules run as native Elastic Security EQL detections, with ATT&CK Enterprise threat mapping.
+The rules run on 13 public captures, 14,340 events, after they are normalised to ECS (`tools/normalize_windows_events.py`):
+
+| Source | Licence | Captures |
+|---|---|---|
+| [OTRF Security-Datasets](https://github.com/OTRF/Security-Datasets) | MIT | 5 Empire and PowerShell captures |
+| [EVTX-to-MITRE-Attack](https://github.com/mdecrevoisier/EVTX-to-MITRE-Attack) | CC0 | Kerberoasting, local brute force, and two negative controls |
+| [splunk/attack_data](https://github.com/splunk/attack_data) | Apache-2.0 | Two PurpleSharp NTLM spraying runs and one RC4 ticket burst |
+| [EVTX-ATTACK-SAMPLES](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES) | GPL-3.0, kept local | Kerberos password spraying |
+
+An analyst dispositioned all 81 hits: 67 TP and 14 FP. The 14 FPs are isolated RC4 tickets that WIN-008 flags in the splunk Kerberoasting capture. That capture was altered after collection, and the report shows the evidence. The burst rule WIN-009 does not fire on them. The negative controls, BloodHound's AES ticket enumeration and two isolated logon failures, raise nothing. Each rule lists its expected production false positives. The same rules run as native Elastic Security EQL and ES|QL detections, with ATT&CK Enterprise threat mapping.
 
 ```powershell
 python tools/benchmark_windows.py --deploy
 ```
 
-These are lab captures with little benign background, so precision 1.0 is not a production false-positive rate. NTLM brute force (4625) and Kerberoasting remain untested. See the [evaluation](docs/benchmarks/windows_detection_report.md) for the full hit list and limits.
+These are lab captures with little benign background, so their precision is not a production false-positive rate. See the [evaluation](docs/benchmarks/windows_detection_report.md) for the full hit list and limits.
+
+The KQL and EQL hunting queries in the playbooks are in [`siem/elastic/hunting_queries.json`](siem/elastic/hunting_queries.json). `tools/validate_hunting_queries.py` runs each one through Kibana's own KQL parser, saves it as a Discover search, and compares the result with counts taken from the raw fields:
+
+```powershell
+python tools/validate_hunting_queries.py
+```
+
+All 11 hunts match. Running them first found three hunts that used ECS fields the normalizer never produced, and a PB-04 sequence that joined on an address local logons do not carry. It also found two platform behaviours worth knowing: ES|QL `KQL()` needs twice as many backslashes as Kibana for a Windows path, and a query-rule preview skipped documents that share a timestamp at a page boundary. See the [hunting validation](docs/benchmarks/hunting_query_validation.md).
 
 ---
 
@@ -412,7 +485,7 @@ node tests/soc_workspace.cjs
 node tests/soc_triage.cjs
 ```
 
-The workflow suite checks SWaT scaler fitting/duplicate handling, benign flow-window boundaries, confusion matrix warmup semantics, dashboard API clearing, and real LibTorch batch/stream parity with fragmented TCP frames and an idle connected client. `tests/test_dashboard_workspace.py` covers evidence-source isolation, analyst persistence, case lifecycle, CSV imports and mutation validation. `tests/soc_workspace.cjs` (also available through `tests/dashboard_smoke.cjs`) checks desktop/mobile layout, queue filters, context evidence, endpoint canvas, research and rules. `tests/soc_triage.cjs` verifies the analyst workflow, imports, export and API-error recovery on an isolated workspace. See [dashboard verification instructions](docs/DASHBOARD.md) for server setup and Playwright configuration.
+The workflow suite checks SWaT scaler fitting/duplicate handling, benign flow-window boundaries, confusion matrix warmup semantics, dashboard API clearing, real LibTorch batch/stream parity with fragmented TCP frames and an idle connected client, the stream alert log surviving a dashboard Clear while the engine holds it open, and the `--stats` counters. CTest covers Isolation Forest seeds and thresholds and the LSTM flow cap. `tests/test_windows.py` covers the ECS fields the hunts use, the splunk XML reader and the hunt definitions; `tests/test_gas2015.py` covers the AUC, average-precision and novelty-rule helpers. `tests/test_dashboard_workspace.py` covers evidence-source isolation, analyst persistence, case lifecycle, CSV imports and mutation validation. `tests/soc_workspace.cjs` (also available through `tests/dashboard_smoke.cjs`) checks desktop/mobile layout, queue filters, context evidence, endpoint canvas, research and rules. `tests/soc_triage.cjs` verifies the analyst workflow, imports, export and API-error recovery on an isolated workspace. See [dashboard verification instructions](docs/DASHBOARD.md) for server setup and Playwright configuration.
 
 ---
 
