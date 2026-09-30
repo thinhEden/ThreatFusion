@@ -143,6 +143,35 @@ int main() {
   }
 
   {
+    const char* policy = "test_host_policy.json";
+    const char* hosts = "test_host_alerts.csv";
+    std::ofstream(policy) << R"({"authorizations":[{"ticket_id":"CHG-1","source_ip":"10.0.0.1","destination_ip":"10.0.0.2","unit_id":1,"function_codes":[6],"register_start":100,"register_end":101,"value_min":50,"value_max":60,"start_utc":"2026-09-30T10:00:00Z","end_utc":"2026-09-30T10:10:00Z","max_commands":60}]})";
+    writeCsv(hosts, {"host_ip", "timestamp", "rule_id", "techniques"}, {{"10.0.0.1", "2026-09-30T10:01:30Z", "WIN-001", "T1059.001"}});
+    OtContext context;
+    context.load(policy);
+    context.loadHostAlerts(hosts, 60);
+    Event write;
+    write.id = "w"; write.protocol = "modbus"; write.isRequest = true; write.srcIp = "10.0.0.1"; write.dstIp = "10.0.0.2";
+    write.unitId = 1; write.functionCode = 6; write.registerAddress = 100; write.registerCount = 1; write.registerValues = {55};
+    const std::vector<Detection> candidate = {{"w", "behavior", "BR-001", "high", "Command Injection", "write", .8}};
+    write.timestamp = "2026-09-30T10:01:00Z";  // Before the host alert: the ticket still applies.
+    assert(context.apply(write, candidate).suppressed == 1);
+    write.timestamp = "2026-09-30T10:02:00Z";  // 30 s after the alert: retained and correlated.
+    const auto correlated = context.apply(write, candidate);
+    assert(correlated.suppressed == 0 && correlated.policyId == "HOST-EVIDENCE");
+    assert(correlated.detections.size() == 2 && correlated.detections[1].indicator == "HOST-OT-001");
+    write.timestamp = "2026-09-30T10:02:31Z";  // Outside the 60 s lookback.
+    assert(context.apply(write, candidate).suppressed == 1);
+    write.timestamp = "2026-09-30T10:02:00Z";
+    write.srcIp = "10.0.0.9";  // No host alert for this source.
+    assert(context.apply(write, candidate).detections.size() == 1);
+    write.srcIp = "10.0.0.1";
+    assert(context.apply(write, {}).detections.empty());  // No OT detection, nothing to correlate.
+    std::remove(policy);
+    std::remove(hosts);
+  }
+
+  {
     const char* mapPath = "test_attack_map.csv";
     writeCsv(mapPath, {"source", "indicator", "techniques", "software", "confidence", "rationale"},
              {{"behavior", "R1", "T1692.001", "", "high", "write"},

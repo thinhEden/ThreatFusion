@@ -24,3 +24,4 @@ yara,ICS_Stuxnet_Production,,S0603,medium,"Lab family indicator strings, not val
 yara,ICS_Triton_Trisis_Production,,S1009,medium,"Lab family indicator strings, not validated against real samples."
 yara,ICS_Industroyer_Production,,S0604,medium,"Lab family indicator strings, not validated against real samples."
 yara,ICS_PipeDream_Production,,S1045,medium,"Lab family indicator strings, not validated against real samples."
+correlation,HOST-OT-001,T1692.001,,high,An OT command message sent by a host that has an active host alert.

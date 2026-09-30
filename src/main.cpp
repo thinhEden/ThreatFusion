@@ -56,6 +56,8 @@ struct Options {
   std::string attackMapPath = "data/attack_mapping.csv";
   bool attackMapRequired = false;
   std::string contextPath;
+  std::string hostAlertsPath;
+  double hostAlertWindow = 3600;
   std::string contextMode = "bounded";
   std::string contextAuditPath = "out/context_audit.csv";
   std::string normalizedEventsPath;
@@ -81,6 +83,7 @@ static void printUsage() {
   std::cout << "                    [--context policy.json --context-audit path]\n"
                "                    [--context-mode bounded|peer-only] (peer-only is an unsafe ablation)\n"
                "                    [--normalized-events path] [--pcap-filter expression] [--timings path]\n"
+               "                    [--host-alerts host_alerts.csv --host-alert-window 3600] (needs --context)\n"
                "                    [--attack-map data/attack_mapping.csv] (MITRE ATT&CK IDs per detection)\n";
 }
 
@@ -145,6 +148,10 @@ static Options parseArgs(int argc, char **argv) {
     }
     else if (arg == "--context")
       options.contextPath = requireValue(arg);
+    else if (arg == "--host-alerts")
+      options.hostAlertsPath = requireValue(arg);
+    else if (arg == "--host-alert-window")
+      options.hostAlertWindow = std::stod(requireValue(arg));
     else if (arg == "--context-mode")
       options.contextMode = requireValue(arg);
     else if (arg == "--context-audit")
@@ -166,6 +173,8 @@ static Options parseArgs(int argc, char **argv) {
   if (options.mode != "batch" && options.mode != "stream") throw std::runtime_error("Unknown engine mode");
   if (options.mode == "stream" && (!options.timingsPath.empty() || !options.normalizedEventsPath.empty()))
     throw std::runtime_error("--timings and --normalized-events are batch-only exports");
+  if (!options.hostAlertsPath.empty() && options.contextPath.empty())
+    throw std::runtime_error("--host-alerts requires --context");
   return options;
 }
 
@@ -196,6 +205,7 @@ int main(int argc, char **argv) {
       if (options.contextMode != "bounded" && options.contextMode != "peer-only")
         throw std::runtime_error("Unknown context mode");
       context.load(options.contextPath, options.contextMode == "peer-only");
+      if (!options.hostAlertsPath.empty()) context.loadHostAlerts(options.hostAlertsPath, options.hostAlertWindow);
       writeCsv(options.contextAuditPath, auditHeaders, {});
       if (options.mode == "stream") contextAuditStream.open(options.contextAuditPath, std::ios::app);
     }

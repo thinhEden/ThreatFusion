@@ -28,8 +28,18 @@ public:
         bool retainStateChanges = false;
     };
     void load(const std::string& path, bool peerOnlyAblation = false);
+    // Host alerts (host_ip,timestamp,rule_id,techniques) that disable suppression for commands from that host.
+    void loadHostAlerts(const std::string& path, double lookbackSeconds);
     ContextDecision apply(const Event& event, const std::vector<Detection>& detections);
 private:
+    struct HostAlert {
+        std::string ip, ruleId, techniques, timestamp;
+        double time = 0;
+    };
+    ContextDecision applyPolicy(const Event& event, const std::vector<Detection>& detections);
+    const HostAlert* hostAlertFor(const Event& event) const;
+    std::vector<HostAlert> hostAlerts_;
+    double hostLookback_ = 0;
     struct Authorization {
         std::string id, src, dst;
         int unit = -1, firstRegister = 0, lastRegister = 0, minimum = 0, maximum = 0;

@@ -1,4 +1,5 @@
 #include "threatfusion/OtContext.h"
+#include "threatfusion/Csv.h"
 #include "third_party/nlohmann/json.hpp"
 #include <algorithm>
 #include <cmath>
@@ -94,7 +95,50 @@ void OtContext::load(const std::string& path, bool peerOnlyAblation) {
     }
 }
 
+void OtContext::loadHostAlerts(const std::string& path, double lookbackSeconds) {
+    if (!(lookbackSeconds > 0)) throw std::runtime_error("Host alert lookback must be positive");
+    hostAlerts_.clear();
+    hostLookback_ = lookbackSeconds;
+    for (const auto& row : readCsv(path)) {
+        HostAlert alert;
+        alert.ip = row.at("host_ip"); alert.ruleId = row.at("rule_id");
+        alert.techniques = row.at("techniques"); alert.timestamp = row.at("timestamp");
+        alert.time = utcSeconds(alert.timestamp);
+        if (alert.ip.empty() || alert.ruleId.empty()) throw std::runtime_error("Host alert requires host_ip and rule_id");
+        hostAlerts_.push_back(alert);
+    }
+}
+
+// Latest host alert raised on the command's source at or before the command, within the lookback.
+const OtContext::HostAlert* OtContext::hostAlertFor(const Event& event) const {
+    if (hostAlerts_.empty()) return nullptr;
+    double time;
+    try { time = utcSeconds(event.timestamp); }
+    catch (...) { return nullptr; }
+    const HostAlert* latest = nullptr;
+    for (const auto& alert : hostAlerts_) {
+        if (alert.ip == event.srcIp && alert.time <= time && time - alert.time <= hostLookback_ &&
+            (!latest || alert.time > latest->time)) latest = &alert;
+    }
+    return latest;
+}
+
 ContextDecision OtContext::apply(const Event& event, const std::vector<Detection>& detections) {
+    // Policy state (ticket budgets, last envelope write) advances even when host evidence overrides the decision.
+    auto result = applyPolicy(event, detections);
+    if (detections.empty() || !event.isRequest) return result;
+    const auto* alert = hostAlertFor(event);
+    if (!alert) return result;
+    result.detections = detections;
+    result.detections.push_back({event.id, "correlation", "HOST-OT-001", "critical", "Command Injection",
+        "OT command from a source with host alert " + alert->ruleId + " at " + alert->timestamp, 0.85});
+    result.suppressed = 0;
+    result.policyId = "HOST-EVIDENCE";
+    result.reason = "Host alert " + alert->ruleId + " on " + alert->ip + " at " + alert->timestamp + "; context suppression disabled";
+    return result;
+}
+
+ContextDecision OtContext::applyPolicy(const Event& event, const std::vector<Detection>& detections) {
     if (envelope_ && event.protocol == "modbus" && event.isRequest && !event.processValues.empty())
         return applyEnvelope(event, detections);
     ContextDecision result;
