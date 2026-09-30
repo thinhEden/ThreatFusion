@@ -21,11 +21,11 @@ ThreatFusion AI is a high-performance C++ security engine designed for **Operati
 | **Data Ingestion** | CSV, JSONL (Zeek/tshark), PCAP (via `tshark`), real-time TCP socket streaming (port 8080) |
 | **Threat Intelligence** | IOC matching (IP, hash, protocol), STIX 2.x / TAXII v2 feed ingestion |
 | **Detection Engine** | Rule-based behavioral detection for Modbus, S7Comm, DNP3, BACnet, IEC-104, IEC 61850/MMS, OPC UA, CODESYS |
-| **Signature Scanning** | Production-grade YARA rules (Stuxnet, Triton, Industroyer, PipeDream), DPI-level Suricata rules |
+| **Signature Scanning** | YARA indicator rules (Stuxnet, Triton, Industroyer, PipeDream) and local Suricata rules; coverage requires separate validation |
 | **AI Anomaly Detection** | C++ Isolation Forest, LSTM Autoencoder (PyTorch training + LibTorch JIT inference) |
 | **Classification** | Reconnaissance, Command Injection, DoS, Unauthorized Firmware Update, Malware Signature, Network Signature |
 | **Risk Scoring** | `Asset Criticality × Threat Severity × Confidence Score` (0–100), with multi-detection correlation boost |
-| **Live Dashboard** | Premium dark-theme real-time SOC console with interactive OT topology, protocol distribution, and alert streaming |
+| **SOC Workspace** | Alert queue, investigation evidence, persistent analyst triage/cases, OT context audit, evaluation and SIEM pivots |
 | **Evaluation** | Confusion matrix (TP/TN/FP/FN), Precision, Recall, F1, Accuracy, FPR, detection latency (avg/p95/max) |
 
 ---
@@ -39,7 +39,7 @@ ThreatFusion AI is a high-performance C++ security engine designed for **Operati
 ├── rules/                  YARA, Suricata, and Snort signature rules
 ├── tools/                  Python utilities (normalization, training, PCAP generation, dashboard server)
 ├── lab/                    Docker Compose OT/ICS simulation lab and attack scripts
-├── dashboard/              Real-time SOC Console (React + Chart.js + Tailwind)
+├── dashboard/              Local React SOC workspace, compiled bundle and vendored runtime assets
 ├── datasets/               Dataset integration guide and manifest (MSU ICS)
 ├── models/                 Trained model artifacts (LSTM Autoencoder weights)
 ├── tests/                  C++ unit tests
@@ -55,7 +55,7 @@ ThreatFusion AI is a high-performance C++ security engine designed for **Operati
 ### Prerequisites
 
 - **C++17** compiler (MSVC recommended on Windows, GCC/Clang on Linux)
-- **CMake** ≥ 3.14
+- **CMake** ≥ 3.16
 - **Python** ≥ 3.8 (for tools and dashboard server)
 - **Optional**: [LibTorch](https://pytorch.org/cppdocs/installing.html), [tshark](https://www.wireshark.org/), [Suricata](https://suricata.io/), [YARA](https://virustotal.github.io/yara/)
 
@@ -74,6 +74,16 @@ cmake -S . -B build -DUSE_LIBTORCH=ON -DCMAKE_PREFIX_PATH="/path/to/libtorch"
 cmake --build build --config Release
 ```
 
+Verified local Windows build (MSVC + CPU LibTorch):
+
+```powershell
+cmake -S . -B build-libtorch -G "Visual Studio 17 2022" -A x64 -DUSE_LIBTORCH=ON -DCMAKE_PREFIX_PATH="D:/libtorch"
+cmake --build build-libtorch --config Release
+ctest --test-dir build-libtorch -C Release --output-on-failure
+```
+
+LibTorch DLLs are copied next to the executable. Requesting a real `.pt` model on a non-LibTorch build is an error; the lab proxy must be requested explicitly with `--lstm simulated`.
+
 ### Alternative: MinGW Build (Windows)
 
 ```powershell
@@ -85,6 +95,17 @@ g++ -std=c++17 -I include src/*.cpp -o build/threatfusion.exe -lws2_32
 ---
 
 ## Usage
+
+### SOC Portfolio: Four Reproducible Outputs
+
+```powershell
+.venv/Scripts/python.exe -m pip install -r tools/requirements-demo.txt
+.venv/Scripts/python.exe tools/portfolio_demo.py --engine build-libtorch/Release/threatfusion.exe --siem
+```
+
+This command generates offline Modbus PCAP evidence, runs C++ baseline / peer-only / bounded-context ablations, produces an analyst case study, and ingests ECS alerts into an authenticated local Elastic Security stack. The main exercise removes 60 maintenance false positives while retaining 80 explicit violations. A separate compromised-endpoint challenge exposes five contextual misses: combined Recall is 94.12%. These are controlled rule-policy results, independent of the MSU ML benchmark.
+
+See [the full runbook](docs/PORTFOLIO_RUNBOOK.md) for build instructions, saved KQL queries, native SIEM alerts, tests, video recording, evidence paths and limitations. Generated deliverables are under `out/portfolio_demo/`; archived findings are under `docs/portfolio/`.
 
 ### Core CSV Pipeline
 
@@ -144,7 +165,7 @@ python tools/generate_bacnet_pcap.py
 
 ```bash
 # Start the C++ engine in stream mode (listens on port 8080)
-./build/threatfusion.exe --stream --port 8080
+./build/threatfusion.exe --mode stream --port 8080
 
 # Stream MSU ICS dataset events to the engine
 python tools/collector_daemon.py --input data/msu_events.jsonl --port 8080 --rate 5
@@ -154,25 +175,23 @@ python tools/collector_daemon.py --input data/msu_events.jsonl --port 8080 --rat
 
 ## SOC Dashboard
 
-ThreatFusion includes a premium real-time **Security Operations Center** dashboard.
+ThreatFusion provides a local SOC workspace centered on the alert queue, with a focused investigation panel and separate views for cases, endpoints, OT context, research and rules.
 
-```bash
-# Start the dashboard server
-python tools/dashboard_server.py
-
-# Open in browser
-# → http://localhost:8000
+```powershell
+python tools/dashboard_server.py --port 8031 --default-source main
+# Open http://127.0.0.1:8031
 ```
 
-**Dashboard Features:**
-- Real-time alert volume activity chart (dynamic time-bucketing)
-- OT Protocol Distribution (Modbus TCP, DNP3, S7Comm, SMB, TCP/UDP)
-- Severity breakdown (Critical / High / Medium / Low)
-- Alert Log Stream Explorer with expandable raw telemetry payloads
-- Industrial OT Asset Inventory with live risk scoring
-- Detection Rules browser (YARA, Suricata, Snort, ML models)
-- Attack Simulation mode for live demo
-- Stream log management (Clear Stream with inline confirmation)
+The main lab is explicitly marked as recorded synthetic evidence. Select Live stream for the current engine output, or import an engine alerts CSV. The default server source is live when no source option is supplied.
+
+- Filter, sort, paginate and export alert evidence.
+- Inspect packet fields, context decisions, maintenance tickets and raw events.
+- Assign owners, save analyst dispositions/notes and create linked cases with persistent history.
+- Inspect observed endpoint connections and actual on-disk rule definitions.
+- Compare before/after FP/FN/Recall, including the documented challenge failures.
+- Pivot into Elastic by packet/capture/time and download the case study, PCAP or recorded video.
+
+Analyst state is stored locally in SQLite and is separate from both lab ground truth and Elastic case state. The compiled frontend and runtime assets are served locally. See [dashboard workflow and build instructions](docs/DASHBOARD.md).
 
 ---
 
@@ -190,22 +209,33 @@ python tools/collector_daemon.py --input data/msu_events.jsonl --port 8080 --rat
 
 See [`datasets/dataset_manifest.csv`](datasets/dataset_manifest.csv) for the full dataset registry.
 
+SWaT process telemetry support is restored in `tools/normalize_swat.py`. It preserves all 51 measurements in `extra_features`; it does not infer Modbus packets from sensor rows. See [the dataset guide](datasets/README.md) for raw-file paths, training-only scaler fitting, duplicate handling, and conversion commands.
+
 ---
 
 ## Benchmark Results
 
-Evaluated on the **MSU ICS Modbus RTU dataset** across 4 attack categories with three detection configurations:
+The verified benchmark uses the command injection, response injection, and DoS capture files in `datasets/MSU_ICS/ModbusRTUfeatureSetsV2`. It trains a fresh deterministic LSTM for each capture and obtains both LSTM reconstruction loss and Isolation Forest scores from the **C++ LibTorch engine**.
 
-| Dataset | LSTM (Auto) | LSTM (Tuned) | Hybrid (IF + LSTM) | Optimal Configuration |
-| :--- | :---: | :---: | :---: | :--- |
-| **Multiclass** | 68.2% | **97.9%** | **97.9%** | LSTM Only |
-| **Command Injection** | 59.7% | **93.8%** | **93.8%** | LSTM Only |
-| **Response Injection** | 64.5% | 76.7% | **81.5%** | 0.7 × IF + 0.3 × LSTM |
-| **DoS** | 91.0% | 93.6% | **94.1%** | 0.8 × IF + 0.2 × LSTM |
+```powershell
+python -m venv .venv
+.venv/Scripts/python.exe -m pip install -r tools/requirements-research.txt --extra-index-url https://download.pytorch.org/whl/cpu
+.venv/Scripts/python.exe tools/benchmark_msu.py --engine build-libtorch/Release/threatfusion.exe --epochs 5 --output out/benchmark_msu
+```
 
-**Key Findings:**
-- **Hybrid Fusion** suppressed false positives on Response Injection and DoS, achieving **81.5%** F1 (+4.8% over pure LSTM).
-- **Tuned LSTM** reaches near-optimal detection on sequential attacks (Multiclass F1: **97.9%**, Command Injection F1: **93.8%**).
+Protocol: per-capture row-order split 60% training / 20% validation / 20% test. Training uses benign windows grouped by source endpoint, with attack gaps resetting a flow window. Thresholds use only benign validation scores at a target FPR of 1%; the test set is never used for tuning. Hybrid weights are fixed at 0.5 / 0.5, with LSTM loss scaled using validation data. Every test row contributes to the confusion matrix; missing warmup scores are treated as negative predictions.
+
+| Capture | Isolation Forest F1 | LSTM F1 | Hybrid F1 | LSTM Test FPR |
+| :--- | ---: | ---: | ---: | ---: |
+| Command Injection | 94.33% | 92.57% | 93.26% | 0.57% |
+| Response Injection | 89.27% | 96.75% | 96.67% | 0.71% |
+| DoS | 91.03% | 95.57% | 95.51% | 1.65% |
+
+[Archived report](docs/benchmarks/msu_report.md) includes TP/TN/FP/FN. Generated models, their metadata, dataset SHA-256 hashes, split counts, validation thresholds, raw scores, and engine logs are saved under `out/benchmark_msu`. Use `--max-rows` only for smoke runs; those are labeled as subsampled in the report.
+
+**Data caveat:** [the MSU data audit](docs/benchmarks/msu_data_audit.md) shows that each capture is a benign block with an appended attack block. A single `TimeInterval` threshold calibrated with the same protocol scores F1 0.998 on command, 0.983 on response and 0.977 on DoS, which beats every model above. `SetPoint` alone separates command injection. Treat this table as capture-specific novelty detection, not evidence that the models learned attack behaviour.
+
+These are binary detector-score results for these captures. They do not measure malware-family identification or the engine's separate operational risk cutoff. Hybrid results are offline weighted score analysis. MSU feature CSVs have no capture timestamps; synthetic endpoint addresses are display mappings, and these results do not validate network-cycle timing. The old tuned benchmark table was removed because its evaluation procedure was not available in this repository.
 
 ---
 
@@ -239,6 +269,16 @@ This prevents unlabeled operational traffic from being incorrectly counted as tr
 - **YARA samples**: The bundled lab marker files are harmless placeholders, not real malware. Validate rules against approved malware datasets before making production claims.
 - **PCAP parsing**: The `tshark` field parser may require tuning for specific Wireshark versions or proprietary protocol plugins.
 - **LibTorch on Windows**: Real TorchScript inference requires an MSVC-compatible build. MinGW builds use a simulated LSTM fallback.
+
+## Verification
+
+```powershell
+ctest --test-dir build-libtorch -C Release --output-on-failure
+# Run the benchmark first to create the real model used by batch/stream parity tests.
+.venv/Scripts/python.exe -m unittest discover -s tests -p test_workflows.py -v
+```
+
+The workflow suite checks SWaT scaler fitting/duplicate handling, benign flow-window boundaries, confusion matrix warmup semantics, dashboard API clearing, and real LibTorch batch/stream parity with fragmented TCP frames and an idle connected client. `tests/test_dashboard_workspace.py` covers evidence-source isolation, analyst persistence, case lifecycle, CSV imports and mutation validation. `tests/soc_workspace.cjs` (also available through `tests/dashboard_smoke.cjs`) checks desktop/mobile layout, queue filters, context evidence, endpoint canvas, research and rules. `tests/soc_triage.cjs` verifies the analyst workflow, imports, export and API-error recovery on an isolated workspace. See [dashboard verification instructions](docs/DASHBOARD.md) for server setup and Playwright configuration.
 
 ---
 
