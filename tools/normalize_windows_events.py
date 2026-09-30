@@ -2,11 +2,13 @@
 
 Raw event fields are kept verbatim under winlog.event_data. Process fields are filled from Sysmon 1,
 Security 4688 and Sysmon 10 (the accessing process) so the same query works across sources.
-Source: https://github.com/OTRF/Security-Datasets (MIT).
+Sources: OTRF Security-Datasets (MIT) zips, and EVTX-ATTACK-SAMPLES .evtx files (GPL-3.0, kept local)
+read with Get-WinEvent on Windows.
 """
 import argparse
 import hashlib
 import json
+import subprocess
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path, PureWindowsPath
@@ -42,13 +44,13 @@ def process_fields(code, data):
     return {'process': process} if process else {}
 
 
-def to_ecs(raw, dataset):
+def to_ecs(raw, dataset, source='windows.otrf'):
     channel = raw.get('Channel') or ''
     code = str(raw.get('EventID'))
     data = {k: str(v) for k, v in raw.items() if k not in TOP_LEVEL and v is not None}
     document = {
         '@timestamp': timestamp(raw),
-        'event': {'code': code, 'dataset': 'windows.otrf',
+        'event': {'code': code, 'dataset': source,
                   'id': hashlib.sha256(json.dumps(raw, sort_keys=True).encode()).hexdigest()[:20]},
         'host': {'name': raw.get('Hostname')},
         'winlog': {'channel': CHANNELS.get(channel.lower(), channel), 'event_data': data},
@@ -66,6 +68,35 @@ def read_zip(path):
             for line in bundle.read(info).decode('utf-8', 'replace').splitlines():
                 if line.strip():
                     yield to_ecs(json.loads(line), dataset)
+
+
+EVTX_SCRIPT = r"""
+param($Path)
+$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+Get-WinEvent -Path $Path -Oldest | ForEach-Object {
+    $xml = [xml]$_.ToXml()
+    $row = [ordered]@{ '@timestamp' = $_.TimeCreated.ToUniversalTime().ToString('o'); EventID = $_.Id;
+                       Channel = $_.LogName; Hostname = $_.MachineName }
+    foreach ($data in $xml.Event.EventData.Data) { if ($data.Name) { $row[$data.Name] = $data.'#text' } }
+    $row | ConvertTo-Json -Compress
+}
+"""
+
+
+def read_evtx(path):
+    """Parse a .evtx file with the built-in Get-WinEvent (Windows only; no extra packages)."""
+    script = Path(path).with_suffix('.read.ps1')
+    script.write_text(EVTX_SCRIPT, encoding='utf-8')
+    try:
+        result = subprocess.run(['powershell', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
+                                 '-File', str(script), '-Path', str(path)],
+                                capture_output=True, text=True, encoding='utf-8', check=True, timeout=300)
+    finally:
+        script.unlink(missing_ok=True)
+    for line in result.stdout.splitlines():
+        if line.strip():
+            yield to_ecs(json.loads(line), Path(path).stem, 'windows.evtx_attack_samples')
 
 
 def main():

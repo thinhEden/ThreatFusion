@@ -15,3 +15,4 @@ WIN-005,f2b615ddab9808fdfd7b,empire_schtasks_creation_standard_user,TP,"MordorSc
 WIN-005,d43c5d2ad0f870c51872,empire_schtasks_creation_standard_user,TP,"MordorSchtask created by the Empire agent (parent powershell) to run hidden PowerShell daily at 09:00."
 WIN-006,0f967b3f389fc9e89803,empire_launcher_vbs,TP,"wscript executing launcher.vbs spawns the encoded PowerShell stager."
 WIN-006,16b62f7dc9e074c31e30,empire_launcher_vbs,TP,"wscript executing launcher.vbs spawns the encoded PowerShell stager."
+WIN-007,172.16.66.1@2020-07-22T20:25:00.000Z,kerberos_pwd_spray_4771,TP,"Kerberos enumeration and spraying from 172.16.66.1 within 11 ms: 7 unknown principals (4768 0x6) and bad passwords for Administrator and backdoor (4771 0x18). Account normal then received a TGT from the same source (4768 0x0): treat it as compromised (PB-04)."

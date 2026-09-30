@@ -5,14 +5,16 @@
     "empire_psexec_dcerpc_tcp_svcctl": 4348,
     "empire_launcher_vbs": 2067,
     "empire_schtasks_creation_standard_user": 1297,
-    "psh_lsass_memory_dump_comsvcs": 175
+    "psh_lsass_memory_dump_comsvcs": 175,
+    "kerberos_pwd_spray_4771": 12
   },
   "dataset_sha256": {
     "empire_launcher_vbs": "812da270cf8cda6f1948fb6275410f15dc1794d0bd6b623c9c25b2518285019c",
     "empire_mimikatz_logonpasswords": "bb4c057b62d781be5426e011872ba1a15070c07afbb24848a14458f4b22b06fb",
     "empire_psexec_dcerpc_tcp_svcctl": "8f40e7fc86bbbf31ebd50b3ba537cf0f4378392ae3e74de84bee00aeb0de1fa5",
     "empire_schtasks_creation_standard_user": "b073a18420c90394cd2b6ad7589c78d90eba32dc155ed04b12ac824a8fc591b4",
-    "psh_lsass_memory_dump_comsvcs": "0af9e920220d746432f0972be83ad057629695540aecd68c15869d190786e1ae"
+    "psh_lsass_memory_dump_comsvcs": "0af9e920220d746432f0972be83ad057629695540aecd68c15869d190786e1ae",
+    "kerberos_pwd_spray_4771": "4a0a1c7132e216dbc704c806e9429df9ae3ac00485d5238e50c776e3099ae11d"
   },
   "rules": {
     "WIN-001": {
@@ -76,6 +78,16 @@
       "datasets": {
         "empire_launcher_vbs": 2
       }
+    },
+    "WIN-007": {
+      "hits": 1,
+      "TP": 1,
+      "FP": 0,
+      "unreviewed": 0,
+      "precision": 1.0,
+      "datasets": {
+        "kerberos_pwd_spray_4771": 1
+      }
     }
   },
   "coverage": {
@@ -129,6 +141,16 @@
       ],
       "rules_mapped_to_otrf_technique": [
         "WIN-006"
+      ]
+    },
+    "kerberos_pwd_spray_4771": {
+      "otrf_id": "EVTX-ATTACK-SAMPLES",
+      "otrf_technique": "T1110.003",
+      "rules_with_tp": [
+        "WIN-007"
+      ],
+      "rules_mapped_to_otrf_technique": [
+        "WIN-007"
       ]
     }
   },
@@ -254,6 +276,15 @@
         "dataset": "empire_launcher_vbs",
         "timestamp": "2020-09-04T20:09:57.091Z",
         "evidence": "4688 WORKSTATION5.theshire.local parent=wscript.exe \"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -noP -sta -w 1 -enc  SQBmACgAJABQAFMAVgBFAFIAUwBpAE8AbgBUAGEAQgBsAEUALgBQAFMAVgBFAHIAUwBJAE8AbgAuAE0",
+        "disposition": "TP"
+      }
+    ],
+    "WIN-007": [
+      {
+        "event_id": "172.16.66.1@2020-07-22T20:25:00.000Z",
+        "dataset": "kerberos_pwd_spray_4771",
+        "timestamp": "2020-07-22T20:29:36.414Z",
+        "evidence": "9 Kerberos failures on 9 accounts from 172.16.66.1, 2020-07-22T20:29:36.414Z to 2020-07-22T20:29:36.425Z",
         "disposition": "TP"
       }
     ]

@@ -48,3 +48,6 @@ build-demo/
 *.suo
 *.user
 .DS_Store
+
+# EVTX-ATTACK-SAMPLES are GPL-3.0; keep them local, never commit
+datasets/EVTX_ATTACK_SAMPLES/

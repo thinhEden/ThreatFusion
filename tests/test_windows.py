@@ -41,7 +41,9 @@ class WindowsRuleTests(unittest.TestCase):
         self.assertEqual(len({r['id'] for r in self.rules}), len(self.rules))
         for rule in self.rules:
             self.assertTrue(set(rule['techniques']) <= set(ENTERPRISE), rule['id'])
-            self.assertTrue(rule['false_positives'] and rule['query'].startswith('any where'), rule['id'])
+            self.assertTrue(rule['false_positives'], rule['id'])
+            prefix = {'eql': 'any where', 'esql': 'FROM threatfusion-windows-otrf'}[rule['language']]
+            self.assertTrue(rule['query'].startswith(prefix), rule['id'])
 
     def test_every_reported_hit_has_an_analyst_disposition(self):
         report = json.loads((ROOT/'docs/benchmarks/windows_detection_report.json').read_text(encoding='utf-8'))

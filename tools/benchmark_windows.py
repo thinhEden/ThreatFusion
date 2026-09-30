@@ -1,4 +1,7 @@
-"""Evaluate the Windows EQL detections (siem/elastic/windows_rules.json) on OTRF datasets in Elasticsearch.
+"""Evaluate the Windows EQL and ES|QL detections (siem/elastic/windows_rules.json) in Elasticsearch.
+
+Data: OTRF Security-Datasets zips (MIT, committed) and EVTX-ATTACK-SAMPLES .evtx files (GPL-3.0, kept local;
+rules without local samples are reported as not evaluated).
 
 Every hit needs an analyst disposition in docs/benchmarks/windows_triage.csv. Unreviewed hits are
 reported, so a rule change cannot silently add false positives. Ground truth is dataset-level: OTRF
@@ -11,7 +14,7 @@ import json
 from collections import Counter
 from pathlib import Path
 from attack_coverage import ENTERPRISE, TACTICS
-from normalize_windows_events import read_zip
+from normalize_windows_events import read_evtx, read_zip
 from siem_elastic import ES, KIBANA, api
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -23,6 +26,8 @@ OTRF = {
     'empire_schtasks_creation_standard_user': ('SDWIN-190319024742', 'T1053.005'),
     'empire_psexec_dcerpc_tcp_svcctl': ('SDWIN-190518210652', 'T1021'),
     'empire_launcher_vbs': ('SDWIN-190518182022', 'T1059.005'),
+    # EVTX-ATTACK-SAMPLES "Credential Access/kerberos_pwd_spray_4771.evtx"
+    'kerberos_pwd_spray_4771': ('EVTX-ATTACK-SAMPLES', 'T1110.003'),
 }
 MAPPING = {'dynamic_templates': [{'strings': {'match_mapping_type': 'string',
                                                'mapping': {'type': 'keyword', 'ignore_above': 8191}}}],
@@ -38,16 +43,16 @@ def bulk(index, documents):
         raise RuntimeError(f"Bulk indexing failed: {json.dumps(failed)[:500]}")
 
 
-def ingest(zips, index):
+def ingest(zips, evtx_files, index):
     try:
         api(ES, f'/{index}', method='DELETE')
     except RuntimeError as error:
         if 'HTTP 404' not in str(error):
             raise
     api(ES, f'/{index}', {'settings': {'number_of_shards': 1, 'number_of_replicas': 0}, 'mappings': MAPPING}, 'PUT')
-    for path in zips:
+    for path in zips + evtx_files:
         batch = []
-        for document in read_zip(path):
+        for document in (read_zip(path) if path.suffix == '.zip' else read_evtx(path)):
             batch.append(document)
             if len(batch) == 500:
                 bulk(index, batch)
@@ -70,9 +75,22 @@ def evidence(source):
     return ' '.join(filter(None, [code, source['host']['name'], parent and f'parent={parent}', detail[:160]]))
 
 
+def esql_hits(rule, index):
+    """Aggregating ES|QL rule: each result row (source, dataset, time window) is one hit."""
+    result = api(ES, '/_query', {'query': rule['query'].replace(f'FROM {INDEX}', f'FROM {index}', 1)}, 'POST')
+    names = [c['name'] for c in result['columns']]
+    rows = [dict(zip(names, values)) for values in result['values']]
+    return [{'event_id': f"{r['source_ip']}@{r['window']}", 'dataset': r['threatfusion.dataset'], 'timestamp': r['first_seen'],
+             'evidence': f"{r['failures']} Kerberos failures on {r['accounts']} accounts from {r['source_ip']}, "
+                         f"{r['first_seen']} to {r['last_seen']}"} for r in rows]
+
+
 def evaluate(rules, index):
     hits = {}
     for rule in rules:
+        if rule['language'] == 'esql':
+            hits[rule['id']] = esql_hits(rule, index)
+            continue
         result = api(ES, f'/{index}/_eql/search', {'query': rule['query'], 'size': 1000})
         hits[rule['id']] = [{'event_id': e['_source']['event']['id'], 'dataset': e['_source']['threatfusion']['dataset'],
                              'timestamp': e['_source']['@timestamp'], 'evidence': evidence(e['_source'])}
@@ -104,18 +122,21 @@ def deploy(rules, index):
         except RuntimeError as error:
             if 'HTTP 404' not in str(error):
                 raise
+        query = ({'type': 'esql', 'language': 'esql', 'query': rule['query'].replace(f'FROM {INDEX}', f'FROM {index}', 1)}
+                 if rule['language'] == 'esql' else {'type': 'eql', 'language': 'eql', 'query': rule['query'], 'index': [index]})
         api(KIBANA, '/api/detection_engine/rules', {
             'rule_id': rule_id, 'name': f"ThreatFusion {rule['id']} - {rule['name']}", 'description': rule['description'],
-            'type': 'eql', 'language': 'eql', 'query': rule['query'], 'index': [index],
+            **query,
             'severity': rule['severity'], 'risk_score': rule['risk_score'], 'threat': threat_mapping(rule['techniques']),
-            # OTRF captures date from 2020, so the lookback covers the recorded period.
+            # The public captures date from 2020, so the lookback covers the recorded period.
             'enabled': True, 'interval': '5m', 'from': 'now-2500d', 'max_signals': 1000,
-            'tags': ['ThreatFusion', 'Windows', 'OTRF lab data']}, 'POST')
+            'tags': ['ThreatFusion', 'Windows', 'Public lab data']}, 'POST')
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--datasets', default=str(ROOT / 'datasets/Windows_OTRF'))
+    parser.add_argument('--evtx', default=str(ROOT / 'datasets/EVTX_ATTACK_SAMPLES'), help='Local .evtx samples (not committed)')
     parser.add_argument('--rules', default=str(ROOT / 'siem/elastic/windows_rules.json'))
     parser.add_argument('--triage', default=str(ROOT / 'docs/benchmarks/windows_triage.csv'))
     parser.add_argument('--report', default=str(ROOT / 'docs/benchmarks/windows_detection_report'))
@@ -124,7 +145,8 @@ def main():
     args = parser.parse_args()
     rules = json.loads(Path(args.rules).read_text(encoding='utf-8'))
     zips = sorted(Path(args.datasets).glob('*.zip'))
-    documents = ingest(zips, args.index)
+    evtx_files = sorted(Path(args.evtx).glob('*.evtx'))
+    documents = ingest(zips, evtx_files, args.index)
     hits = evaluate(rules, args.index)
     triage = {}
     if Path(args.triage).exists():
@@ -146,21 +168,30 @@ def main():
                                'datasets': dict(Counter(h['dataset'] for h in hits[rule['id']]))}
     coverage = {}
     for dataset, (otrf_id, technique) in OTRF.items():
+        if dataset not in documents:
+            coverage[dataset] = {'otrf_id': otrf_id, 'otrf_technique': technique, 'rules_with_tp': [],
+                                 'rules_mapped_to_otrf_technique': [], 'note': 'sample not present locally; not evaluated'}
+            continue
         detected = sorted({r['id'] for r in rules for h in hits[r['id']] if h['dataset'] == dataset
                            and triage.get((r['id'], h['event_id']), {}).get('disposition') == 'TP'})
         exact = [r['id'] for r in rules if r['id'] in detected and technique in r['techniques']]
         coverage[dataset] = {'otrf_id': otrf_id, 'otrf_technique': technique, 'rules_with_tp': detected,
                              'rules_mapped_to_otrf_technique': exact}
     report = {'index': args.index, 'documents': documents,
-              'dataset_sha256': {p.stem: hashlib.sha256(p.read_bytes()).hexdigest() for p in zips},
+              'dataset_sha256': {p.stem: hashlib.sha256(p.read_bytes()).hexdigest() for p in zips + evtx_files},
               'rules': summary, 'coverage': coverage, 'hits': hits}
     Path(f'{args.report}.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
 
-    lines = ['# Windows Detection Evaluation (OTRF Security-Datasets)', '',
-             'Generated by `tools/benchmark_windows.py`. Six EQL rules from `siem/elastic/windows_rules.json` run on five OTRF '
-             '[Security-Datasets](https://github.com/OTRF/Security-Datasets) captures (MIT licence) in Elasticsearch. '
-             f"The captures hold {sum(documents.values()):,} events. Every hit is dispositioned by an analyst in "
-             '[windows_triage.csv](windows_triage.csv).', '',
+    evtx_note = (f"one [EVTX-ATTACK-SAMPLES](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES) sample (GPL-3.0; kept local and "
+                 f"not redistributed, SHA-256 in the JSON report)" if evtx_files else
+                 'no local EVTX-ATTACK-SAMPLES file, so ES|QL rules that need one are not evaluated')
+    lines = ['# Windows Detection Evaluation', '',
+             f"Generated by `tools/benchmark_windows.py`. {len(rules)} rules from `siem/elastic/windows_rules.json` "
+             f"({sum(r['language'] == 'eql' for r in rules)} EQL, {sum(r['language'] == 'esql' for r in rules)} ES|QL) run in Elasticsearch. "
+             'The data is five OTRF [Security-Datasets](https://github.com/OTRF/Security-Datasets) captures (MIT licence) '
+             f"and {evtx_note}. Together they hold {sum(documents.values()):,} events. "
+             'Every hit is dispositioned by an analyst in [windows_triage.csv](windows_triage.csv). '
+             'An ES|QL hit is one aggregated row (source, capture, five-minute window), not one event.', '',
              '## Rules', '',
              '| Rule | Name | ATT&CK | Hits | TP | FP | Unreviewed | Precision |', '|---|---|---|---:|---:|---:|---:|---:|']
     for rule in rules:
@@ -171,11 +202,11 @@ def main():
     lines += ['', 'Sysmon 1 and Security 4688 both record each process creation, so one process can produce two hits.', '',
               '## Expected False Positives in Production', '']
     lines += [f"- **{rule['id']}**: {rule['false_positives']}" for rule in rules]
-    lines += ['', '## Coverage of OTRF Captures', '',
-              '| Capture | OTRF ID | OTRF technique | Rules with true positives | Rule mapped to the OTRF technique |',
+    lines += ['', '## Coverage of Public Captures', '',
+              '| Capture | Source ID | Published technique | Rules with true positives | Rule mapped to the published technique |',
               '|---|---|---|---|---|']
     for dataset, c in coverage.items():
-        lines.append(f"| `{dataset}` | {c['otrf_id']} | {c['otrf_technique']} | {', '.join(c['rules_with_tp']) or 'none'} | "
+        lines.append(f"| `{dataset}` | {c['otrf_id']} | {c['otrf_technique']} | {', '.join(c['rules_with_tp']) or c.get('note', 'none')} | "
                      f"{', '.join(c['rules_mapped_to_otrf_technique']) or 'none'} |")
     lines += ['', '## Hits', '', '| Rule | Capture | Disposition | Evidence | Analyst reason |', '|---|---|---|---|---|']
     for rule in rules:
@@ -190,7 +221,8 @@ def main():
               'Rules depending on 4688 command lines or Sysmon 10 need the same logging.',
               '- `empire_psexec_dcerpc_tcp_svcctl` is mapped by OTRF to T1021 Remote Services. WIN-004 detects the service-execution '
               'part (T1543.003, T1569.002), not the remote logon itself.',
-              '- Brute force (4625) and Kerberoasting (4769) are not in these captures. Those rules remain untested.']
+              '- The spraying sample holds 12 events from one source within one second; it proves the rule logic, not its threshold '
+              'on real domain-controller volume. NTLM brute force (4625) and Kerberoasting (4769) have no public sample here and remain untested.']
     Path(f'{args.report}.md').write_text('\n'.join(lines) + '\n', encoding='utf-8')
     print(json.dumps(summary, indent=1))
 

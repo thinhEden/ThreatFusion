@@ -36,6 +36,7 @@ ENTERPRISE = {
     'T1569': ('System Services', 'TA0002'), 'T1569.002': ('Service Execution', 'TA0002'),
     'T1053': ('Scheduled Task/Job', 'TA0003'), 'T1053.005': ('Scheduled Task', 'TA0003'),
     'T1021': ('Remote Services', 'TA0008'),
+    'T1110': ('Brute Force', 'TA0006'), 'T1110.003': ('Password Spraying', 'TA0006'),
 }
 TACTICS = {'TA0002': 'Execution', 'TA0003': 'Persistence', 'TA0004': 'Privilege Escalation',
            'TA0006': 'Credential Access', 'TA0008': 'Lateral Movement'}
