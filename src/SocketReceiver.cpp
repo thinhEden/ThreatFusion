@@ -1,258 +1,117 @@
 #include "threatfusion/SocketReceiver.h"
+#include "threatfusion/DataIngestion.h"
 #include "threatfusion/Csv.h"
-
 #include <iostream>
-#include <sstream>
-#include <vector>
 
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
-typedef SOCKET socket_t;
+using socket_t = SOCKET;
 #else
 #include <arpa/inet.h>
-#include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
-typedef int socket_t;
+using socket_t = int;
 #define INVALID_SOCKET -1
 #define SOCKET_ERROR -1
 #define closesocket close
+#define SD_BOTH SHUT_RDWR
 #endif
 
 namespace threatfusion {
 
-static std::string jsonValue(const std::string &line, const std::string &key) {
-  const auto pattern = "\"" + key + "\"";
-  auto keyPos = line.find(pattern);
-  if (keyPos == std::string::npos) {
-    return "";
-  }
-  auto colon = line.find(':', keyPos + pattern.size());
-  if (colon == std::string::npos) {
-    return "";
-  }
-  auto valueStart = line.find_first_not_of(" \t", colon + 1);
-  if (valueStart == std::string::npos) {
-    return "";
-  }
-
-  if (line[valueStart] == '"') {
-    ++valueStart;
-    auto valueEnd = line.find('"', valueStart);
-    if (valueEnd == std::string::npos) {
-      return "";
-    }
-    return line.substr(valueStart, valueEnd - valueStart);
-  }
-
-  auto valueEnd = line.find_first_of(",}", valueStart);
-  if (valueEnd == std::string::npos) {
-    valueEnd = line.size();
-  }
-  return trim(line.substr(valueStart, valueEnd - valueStart));
-}
-
-static int jsonInt(const std::string &line, const std::string &key,
-                   int fallback = 0) {
-  const auto value = jsonValue(line, key);
-  if (value.empty()) {
-    return fallback;
-  }
-  try {
-    return std::stoi(value);
-  } catch (...) {
-    return fallback;
-  }
-}
-
-SocketReceiver::SocketReceiver() : running_(false) {
-#ifdef _WIN32
-  serverSocket_ = INVALID_SOCKET;
-#else
-  serverSocket_ = -1;
-#endif
-}
-
+SocketReceiver::SocketReceiver() : running_(false) {}
 SocketReceiver::~SocketReceiver() { stop(); }
 
-bool SocketReceiver::start(int port,
-                           std::function<void(const Event &)> callback) {
-  if (running_) {
-    return false;
-  }
-  running_ = true;
-  listenerThread_ =
-      std::thread(&SocketReceiver::listenLoop, this, port, callback);
-  return true;
+bool SocketReceiver::start(int port, std::function<void(const Event&)> callback) {
+    if (listenerThread_.joinable() || port < 1 || port > 65535) return false;
+#ifdef _WIN32
+    WSADATA data;
+    if (WSAStartup(MAKEWORD(2, 2), &data)) return false;
+    networkInitialized_ = true;
+#endif
+    auto fd = socket(AF_INET, SOCK_STREAM, 0);
+    sockaddr_in address{};
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(static_cast<unsigned short>(port));
+    if (fd == INVALID_SOCKET || bind(fd, reinterpret_cast<sockaddr*>(&address), sizeof(address)) == SOCKET_ERROR ||
+        listen(fd, 8) == SOCKET_ERROR) {
+        if (fd != INVALID_SOCKET) closesocket(fd);
+#ifdef _WIN32
+        WSACleanup();
+        networkInitialized_ = false;
+#endif
+        return false;
+    }
+    serverSocket_ = static_cast<std::intptr_t>(fd);
+    running_ = true;
+    listenerThread_ = std::thread(&SocketReceiver::listenLoop, this, callback);
+    return true;
 }
 
 void SocketReceiver::stop() {
-  if (!running_) {
-    return;
-  }
-  running_ = false;
-
-#ifdef _WIN32
-  if (serverSocket_ != INVALID_SOCKET) {
-    closesocket(serverSocket_);
-    serverSocket_ = INVALID_SOCKET;
-  }
-#else
-  if (serverSocket_ >= 0) {
-    closesocket(serverSocket_);
-    serverSocket_ = -1;
-  }
-#endif
-
-  if (listenerThread_.joinable()) {
-    listenerThread_.join();
-  }
-}
-
-void SocketReceiver::listenLoop(int port,
-                                std::function<void(const Event &)> callback) {
-#ifdef _WIN32
-  WSADATA wsaData;
-  if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-    std::cerr << "[SocketReceiver] WSAStartup failed.\n";
     running_ = false;
-    return;
-  }
-#endif
-
-  struct sockaddr_in address{};
-  address.sin_family = AF_INET;
-  address.sin_addr.s_addr = INADDR_ANY;
-  address.sin_port = htons(port);
-
-  socket_t serverFd = socket(AF_INET, SOCK_STREAM, 0);
-#ifdef _WIN32
-  serverSocket_ = serverFd;
-  if (serverFd == INVALID_SOCKET) {
-    std::cerr << "[SocketReceiver] Socket creation failed.\n";
-    WSACleanup();
-    running_ = false;
-    return;
-  }
-#else
-  serverSocket_ = serverFd;
-  if (serverFd < 0) {
-    std::cerr << "[SocketReceiver] Socket creation failed.\n";
-    running_ = false;
-    return;
-  }
-#endif
-
-  int opt = 1;
-#ifdef _WIN32
-  setsockopt(serverFd, SOL_SOCKET, SO_REUSEADDR, (const char *)&opt,
-             sizeof(opt));
-#else
-  setsockopt(serverFd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-#endif
-
-  if (bind(serverFd, (struct sockaddr *)&address, sizeof(address)) ==
-      SOCKET_ERROR) {
-    std::cerr << "[SocketReceiver] Bind failed on port " << port << ".\n";
-    closesocket(serverFd);
-#ifdef _WIN32
-    WSACleanup();
-#endif
-    running_ = false;
-    return;
-  }
-
-  if (listen(serverFd, 3) == SOCKET_ERROR) {
-    std::cerr << "[SocketReceiver] Listen failed.\n";
-    closesocket(serverFd);
-#ifdef _WIN32
-    WSACleanup();
-#endif
-    running_ = false;
-    return;
-  }
-
-  std::cout << "[SocketReceiver] Listening on port " << port << "...\n";
-
-  while (running_) {
-    struct sockaddr_in clientAddr{};
-    socklen_t addrLen = sizeof(clientAddr);
-    socket_t clientFd =
-        accept(serverFd, (struct sockaddr *)&clientAddr, &addrLen);
-
-#ifdef _WIN32
-    if (clientFd == INVALID_SOCKET) {
-      if (!running_)
-        break;
-      continue;
-    }
-#else
-    if (clientFd < 0) {
-      if (!running_)
-        break;
-      continue;
-    }
-#endif
-
-#ifdef _WIN32
-    const char *ipStr = inet_ntoa(clientAddr.sin_addr);
-#else
-    char ipStr[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &(clientAddr.sin_addr), ipStr, INET_ADDRSTRLEN);
-#endif
-    std::cout << "[SocketReceiver] Connection accepted from " << ipStr << "\n";
-
-    std::string bufferAccumulator;
-    char buffer[1024];
-
-    while (running_) {
-      int valRead = recv(clientFd, buffer, sizeof(buffer) - 1, 0);
-      if (valRead <= 0) {
-        std::cout << "[SocketReceiver] Connection closed or read error.\n";
-        break;
-      }
-
-      buffer[valRead] = '\0';
-      bufferAccumulator += buffer;
-
-      size_t newlinePos;
-      while ((newlinePos = bufferAccumulator.find('\n')) != std::string::npos) {
-        std::string line = bufferAccumulator.substr(0, newlinePos);
-        bufferAccumulator.erase(0, newlinePos + 1);
-
-        line = trim(line);
-        if (line.empty()) {
-          continue;
+    {
+        std::lock_guard<std::mutex> lock(socketMutex_);
+        if (clientSocket_ != -1) {
+            shutdown(static_cast<socket_t>(clientSocket_), SD_BOTH);
+            closesocket(static_cast<socket_t>(clientSocket_));
+            clientSocket_ = -1;
         }
-
-        // Parse line to Event
-        Event event;
-        event.id = jsonValue(line, "id");
-        event.timestamp = jsonValue(line, "timestamp");
-        event.srcIp = jsonValue(line, "src_ip");
-        event.dstIp = jsonValue(line, "dst_ip");
-        event.protocol = jsonValue(line, "protocol");
-        event.functionCode = jsonInt(line, "function_code", -1);
-        event.assetRole = jsonValue(line, "asset_role");
-        event.payloadHash = jsonValue(line, "payload_hash");
-        event.payloadPath = jsonValue(line, "payload_path");
-        event.bytes = jsonInt(line, "bytes", 0);
-        event.action = jsonValue(line, "action");
-        event.label = jsonValue(line, "label");
-
-        // Invoke callback
-        callback(event);
-      }
+        if (serverSocket_ != -1) {
+            shutdown(static_cast<socket_t>(serverSocket_), SD_BOTH);
+            closesocket(static_cast<socket_t>(serverSocket_));
+            serverSocket_ = -1;
+        }
     }
-    closesocket(clientFd);
-  }
-
-  closesocket(serverFd);
+    if (listenerThread_.joinable()) listenerThread_.join();
 #ifdef _WIN32
-  WSACleanup();
+    if (networkInitialized_) WSACleanup();
+    networkInitialized_ = false;
 #endif
-  std::cout << "[SocketReceiver] Listener thread stopped.\n";
 }
 
+void SocketReceiver::listenLoop(std::function<void(const Event&)> callback) {
+    socket_t server;
+    {
+        std::lock_guard<std::mutex> lock(socketMutex_);
+        server = static_cast<socket_t>(serverSocket_);
+    }
+    while (running_) {
+        auto client = accept(server, nullptr, nullptr);
+        if (client == INVALID_SOCKET) break;
+        {
+            std::lock_guard<std::mutex> lock(socketMutex_);
+            clientSocket_ = static_cast<std::intptr_t>(client);
+            if (!running_) shutdown(client, SD_BOTH);
+        }
+        std::string pending;
+        char buffer[8192];
+        while (running_) {
+            const auto received = recv(client, buffer, sizeof(buffer), 0);
+            if (received <= 0) break;
+            pending.append(buffer, static_cast<std::size_t>(received));
+            // Bound incomplete frames before parsing untrusted JSON.
+            if (pending.size() > 1024 * 1024) break;
+            std::size_t newline;
+            while ((newline = pending.find('\n')) != std::string::npos) {
+                auto line = pending.substr(0, newline);
+                pending.erase(0, newline + 1);
+                if (trim(line).empty()) continue;
+                try { callback(parseJsonEvent(line)); }
+                catch (const std::exception& error) {
+                    std::cerr << "[SocketReceiver] Rejected event: " << error.what() << '\n';
+                }
+            }
+        }
+        {
+            std::lock_guard<std::mutex> lock(socketMutex_);
+            if (clientSocket_ != -1) {
+                closesocket(client);
+                clientSocket_ = -1;
+            }
+        }
+    }
+}
 } // namespace threatfusion

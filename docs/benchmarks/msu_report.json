@@ -1,0 +1,436 @@
+{
+  "protocol": "Row-order 60/20/20 per capture, benign-only training, validation-only FPR calibration. Rules: TimeInterval outside the benign-validation band at the same FPR; SetPoint value never seen in benign training rows.",
+  "engine_sha256": "5a4ccb3f01f7838bace747cf69caed733e9a27cd87b56095edba72051f17d8fe",
+  "python": "3.12.0 (tags/v3.12.0:0fb18b0, Oct  2 2023, 13:03:39) [MSC v.1935 64 bit (AMD64)]",
+  "numpy": "2.5.2",
+  "command": [
+    "tools/benchmark_msu.py",
+    "--engine",
+    "build-libtorch/Release/threatfusion.exe",
+    "--epochs",
+    "5",
+    "--output",
+    "out/benchmark_msu"
+  ],
+  "smoke_run": false,
+  "cases": {
+    "command": {
+      "source": "D:\\ThreatFusion-AI\\datasets\\MSU_ICS\\ModbusRTUfeatureSetsV2\\Multiclass FeatureSets\\MulticlasCommandInjectionV2.csv",
+      "sha256": "2e57e4a6cf7a91c471e529269e39487911b2104db46bcad4dff2733997f5d7b8",
+      "split": {
+        "train": {
+          "rows": 17006,
+          "benign": 17006,
+          "malicious": 0
+        },
+        "validation": {
+          "rows": 5669,
+          "benign": 5669,
+          "malicious": 0
+        },
+        "test": {
+          "rows": 5669,
+          "benign": 5411,
+          "malicious": 258
+        }
+      },
+      "training": {
+        "feature_encoding": "fnv1a64-v1",
+        "feature_count": 12,
+        "window_size": 10,
+        "anomaly_threshold": 0.003,
+        "seed": 1337,
+        "epochs": 5,
+        "training_windows": 16994,
+        "epoch_losses": [
+          0.036629428417459475,
+          0.0024361747585112514,
+          0.0008951953587305194,
+          0.0005522845538398931,
+          0.0004508148096972311
+        ],
+        "torch_version": "2.12.0+cpu",
+        "flow_key": "src_ip"
+      },
+      "warmup_events_test": 18,
+      "calibration": {
+        "target_validation_fpr": 0.01,
+        "if_threshold": 0.6415824161834737,
+        "lstm_threshold": 0.0006472296285210176,
+        "hybrid_threshold": 0.8344491121269667,
+        "if_weight": 0.5
+      },
+      "metrics": {
+        "isolation_forest": {
+          "TP": 258,
+          "TN": 5380,
+          "FP": 31,
+          "FN": 0,
+          "precision": 0.8927335640138409,
+          "recall": 1.0,
+          "f1": 0.943327239488117,
+          "accuracy": 0.9945316634327042,
+          "false_positive_rate": 0.005729070412123452
+        },
+        "lstm": {
+          "TP": 249,
+          "TN": 5380,
+          "FP": 31,
+          "FN": 9,
+          "precision": 0.8892857142857142,
+          "recall": 0.9651162790697675,
+          "f1": 0.9256505576208178,
+          "accuracy": 0.9929440818486506,
+          "false_positive_rate": 0.005729070412123452
+        },
+        "hybrid": {
+          "TP": 249,
+          "TN": 5384,
+          "FP": 27,
+          "FN": 9,
+          "precision": 0.9021739130434783,
+          "recall": 0.9651162790697675,
+          "f1": 0.9325842696629213,
+          "accuracy": 0.9936496736637855,
+          "false_positive_rate": 0.004989835520236555
+        },
+        "timeinterval_rule": {
+          "TP": 258,
+          "TN": 5410,
+          "FP": 1,
+          "FN": 0,
+          "precision": 0.9961389961389961,
+          "recall": 1.0,
+          "f1": 0.9980657640232108,
+          "accuracy": 0.9998236020462162,
+          "false_positive_rate": 0.00018480872297172427
+        },
+        "setpoint_rule": {
+          "TP": 247,
+          "TN": 5411,
+          "FP": 0,
+          "FN": 11,
+          "precision": 1.0,
+          "recall": 0.9573643410852714,
+          "f1": 0.9782178217821782,
+          "accuracy": 0.9980596225083789,
+          "false_positive_rate": 0.0
+        }
+      },
+      "metrics_without_TimeInterval": {
+        "isolation_forest": {
+          "TP": 258,
+          "TN": 5411,
+          "FP": 0,
+          "FN": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "accuracy": 1.0,
+          "false_positive_rate": 0.0
+        },
+        "lstm": {
+          "TP": 249,
+          "TN": 5411,
+          "FP": 0,
+          "FN": 9,
+          "precision": 1.0,
+          "recall": 0.9651162790697675,
+          "f1": 0.9822485207100592,
+          "accuracy": 0.9984124184159464,
+          "false_positive_rate": 0.0
+        },
+        "hybrid": {
+          "TP": 249,
+          "TN": 5411,
+          "FP": 0,
+          "FN": 9,
+          "precision": 1.0,
+          "recall": 0.9651162790697675,
+          "f1": 0.9822485207100592,
+          "accuracy": 0.9984124184159464,
+          "false_positive_rate": 0.0
+        }
+      }
+    },
+    "response": {
+      "source": "D:\\ThreatFusion-AI\\datasets\\MSU_ICS\\ModbusRTUfeatureSetsV2\\Multiclass FeatureSets\\MulticlassResponseInjectionV2.csv",
+      "sha256": "aabfca41c45cc3e205684855ab3618b3277da8cfba20a5e5273b87a6cefb2a08",
+      "split": {
+        "train": {
+          "rows": 17585,
+          "benign": 17585,
+          "malicious": 0
+        },
+        "validation": {
+          "rows": 5862,
+          "benign": 5862,
+          "malicious": 0
+        },
+        "test": {
+          "rows": 5862,
+          "benign": 4623,
+          "malicious": 1239
+        }
+      },
+      "training": {
+        "feature_encoding": "fnv1a64-v1",
+        "feature_count": 12,
+        "window_size": 10,
+        "anomaly_threshold": 0.003,
+        "seed": 1337,
+        "epochs": 5,
+        "training_windows": 17576,
+        "epoch_losses": [
+          0.02777656315964497,
+          0.0018451738310744667,
+          0.0006528444373899622,
+          0.0004765043604058588,
+          0.00042740173510059167
+        ],
+        "torch_version": "2.12.0+cpu",
+        "flow_key": "src_ip"
+      },
+      "warmup_events_test": 9,
+      "calibration": {
+        "target_validation_fpr": 0.01,
+        "if_threshold": 0.6054681484771766,
+        "lstm_threshold": 0.001864882134832376,
+        "hybrid_threshold": 0.7965225975551193,
+        "if_weight": 0.5
+      },
+      "metrics": {
+        "isolation_forest": {
+          "TP": 1127,
+          "TN": 4464,
+          "FP": 159,
+          "FN": 112,
+          "precision": 0.8763608087091758,
+          "recall": 0.9096045197740112,
+          "f1": 0.8926732673267327,
+          "accuracy": 0.953770044353463,
+          "false_positive_rate": 0.03439325113562622
+        },
+        "lstm": {
+          "TP": 1192,
+          "TN": 4590,
+          "FP": 33,
+          "FN": 47,
+          "precision": 0.9730612244897959,
+          "recall": 0.9620661824051655,
+          "f1": 0.9675324675324676,
+          "accuracy": 0.9863527806209484,
+          "false_positive_rate": 0.007138221933809215
+        },
+        "hybrid": {
+          "TP": 1192,
+          "TN": 4588,
+          "FP": 35,
+          "FN": 47,
+          "precision": 0.9714751426242869,
+          "recall": 0.9620661824051655,
+          "f1": 0.9667477696674777,
+          "accuracy": 0.9860116001364722,
+          "false_positive_rate": 0.007570841444949167
+        },
+        "timeinterval_rule": {
+          "TP": 1237,
+          "TN": 4583,
+          "FP": 40,
+          "FN": 2,
+          "precision": 0.9686765857478465,
+          "recall": 0.9983857949959645,
+          "f1": 0.9833068362480127,
+          "accuracy": 0.9928352098259979,
+          "false_positive_rate": 0.008652390222799048
+        },
+        "setpoint_rule": {
+          "TP": 0,
+          "TN": 4623,
+          "FP": 0,
+          "FN": 1239,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 0.7886386898669396,
+          "false_positive_rate": 0.0
+        }
+      },
+      "metrics_without_TimeInterval": {
+        "isolation_forest": {
+          "TP": 1124,
+          "TN": 4492,
+          "FP": 131,
+          "FN": 115,
+          "precision": 0.895617529880478,
+          "recall": 0.9071832122679581,
+          "f1": 0.9013632718524459,
+          "accuracy": 0.9580348004094166,
+          "false_positive_rate": 0.028336577979666884
+        },
+        "lstm": {
+          "TP": 1126,
+          "TN": 4529,
+          "FP": 94,
+          "FN": 113,
+          "precision": 0.9229508196721311,
+          "recall": 0.9087974172719936,
+          "f1": 0.9158194387962586,
+          "accuracy": 0.9646878198567042,
+          "false_positive_rate": 0.020333117023577763
+        },
+        "hybrid": {
+          "TP": 1126,
+          "TN": 4518,
+          "FP": 105,
+          "FN": 113,
+          "precision": 0.9147034930950447,
+          "recall": 0.9087974172719936,
+          "f1": 0.9117408906882591,
+          "accuracy": 0.9628113271920846,
+          "false_positive_rate": 0.0227125243348475
+        }
+      }
+    },
+    "dos": {
+      "source": "D:\\ThreatFusion-AI\\datasets\\MSU_ICS\\ModbusRTUfeatureSetsV2\\DoS Data FeatureSet\\modbusRTU_DoSResponseInjectionV2.csv",
+      "sha256": "71c94f80c1a0e122dd59f33251a945da3f20dc3978f0f4317f94bbf0ab48ede9",
+      "split": {
+        "train": {
+          "rows": 17365,
+          "benign": 17365,
+          "malicious": 0
+        },
+        "validation": {
+          "rows": 5789,
+          "benign": 5789,
+          "malicious": 0
+        },
+        "test": {
+          "rows": 5789,
+          "benign": 4916,
+          "malicious": 873
+        }
+      },
+      "training": {
+        "feature_encoding": "fnv1a64-v1",
+        "feature_count": 12,
+        "window_size": 10,
+        "anomaly_threshold": 0.003,
+        "seed": 1337,
+        "epochs": 5,
+        "training_windows": 17356,
+        "epoch_losses": [
+          0.02808452588764684,
+          0.00192055030990762,
+          0.0006602470414291472,
+          0.00047927711403653527,
+          0.0004290863401915446
+        ],
+        "torch_version": "2.12.0+cpu",
+        "flow_key": "src_ip"
+      },
+      "warmup_events_test": 9,
+      "calibration": {
+        "target_validation_fpr": 0.01,
+        "if_threshold": 0.6071293840680277,
+        "lstm_threshold": 0.0009362172137480273,
+        "hybrid_threshold": 0.7790668741934003,
+        "if_weight": 0.5
+      },
+      "metrics": {
+        "isolation_forest": {
+          "TP": 873,
+          "TN": 4744,
+          "FP": 172,
+          "FN": 0,
+          "precision": 0.8354066985645933,
+          "recall": 1.0,
+          "f1": 0.9103232533889468,
+          "accuracy": 0.9702884781482122,
+          "false_positive_rate": 0.03498779495524817
+        },
+        "lstm": {
+          "TP": 873,
+          "TN": 4835,
+          "FP": 81,
+          "FN": 0,
+          "precision": 0.9150943396226415,
+          "recall": 1.0,
+          "f1": 0.9556650246305419,
+          "accuracy": 0.9860079461046813,
+          "false_positive_rate": 0.01647681041497152
+        },
+        "hybrid": {
+          "TP": 873,
+          "TN": 4834,
+          "FP": 82,
+          "FN": 0,
+          "precision": 0.9141361256544502,
+          "recall": 1.0,
+          "f1": 0.9551422319474836,
+          "accuracy": 0.9858352046985662,
+          "false_positive_rate": 0.016680227827502035
+        },
+        "timeinterval_rule": {
+          "TP": 873,
+          "TN": 4875,
+          "FP": 41,
+          "FN": 0,
+          "precision": 0.9551422319474836,
+          "recall": 1.0,
+          "f1": 0.9770565193060996,
+          "accuracy": 0.9929176023492832,
+          "false_positive_rate": 0.008340113913751017
+        },
+        "setpoint_rule": {
+          "TP": 0,
+          "TN": 4916,
+          "FP": 0,
+          "FN": 873,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "accuracy": 0.849196752461565,
+          "false_positive_rate": 0.0
+        }
+      },
+      "metrics_without_TimeInterval": {
+        "isolation_forest": {
+          "TP": 873,
+          "TN": 4767,
+          "FP": 149,
+          "FN": 0,
+          "precision": 0.8542074363992173,
+          "recall": 1.0,
+          "f1": 0.9213720316622691,
+          "accuracy": 0.9742615304888582,
+          "false_positive_rate": 0.03030919446704638
+        },
+        "lstm": {
+          "TP": 872,
+          "TN": 4813,
+          "FP": 103,
+          "FN": 1,
+          "precision": 0.8943589743589744,
+          "recall": 0.9988545246277205,
+          "f1": 0.9437229437229437,
+          "accuracy": 0.9820348937640352,
+          "false_positive_rate": 0.0209519934906428
+        },
+        "hybrid": {
+          "TP": 872,
+          "TN": 4802,
+          "FP": 114,
+          "FN": 1,
+          "precision": 0.8843813387423936,
+          "recall": 0.9988545246277205,
+          "f1": 0.9381387842926304,
+          "accuracy": 0.9801347382967698,
+          "false_positive_rate": 0.023189585028478437
+        }
+      }
+    }
+  },
+  "note": "Labels tune no model features. MSU timestamps are absent. These are capture-specific binary results, not malware-family identification."
+}

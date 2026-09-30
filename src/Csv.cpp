@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cctype>
 #include <fstream>
+#include <filesystem>
 #include <stdexcept>
 
 #ifdef _WIN32
@@ -175,6 +176,50 @@ void writeCsv(const std::string& path,
         }
         file << '\n';
     }
+}
+
+void writeCsvRow(std::ostream& stream, const std::vector<std::string>& row) {
+    for (std::size_t i = 0; i < row.size(); ++i) {
+        if (i) stream << ',';
+        stream << escapeCsv(row[i]);
+    }
+    stream << '\n';
+    if (!stream) throw std::runtime_error("Cannot write CSV row");
+}
+
+void appendCsv(const std::string& path, const std::vector<std::string>& headers,
+               const std::vector<std::string>& row) {
+    ensureParentDirectory(path);
+    std::ifstream existing(path, std::ios::binary | std::ios::ate);
+    bool needsHeader = !existing || existing.tellg() == 0;
+    if (!needsHeader) {
+        existing.seekg(0);
+        std::string header;
+        std::getline(existing, header);
+        if (parseCsvLine(header) != headers) {
+            existing.close();
+            // Preserve logs from an earlier schema rather than appending unreadable rows.
+            std::string backup;
+            for (unsigned n = 1; ; ++n) {
+                backup = path + ".schema-" + std::to_string(n) + ".bak";
+                if (!std::filesystem::exists(backup)) break;
+            }
+            std::filesystem::rename(path, backup);
+            needsHeader = true;
+        }
+    }
+    existing.close();
+    std::ofstream file(path, std::ios::app);
+    if (!file) throw std::runtime_error("Cannot append CSV: " + path);
+    auto writeRow = [&](const std::vector<std::string>& fields) {
+        for (std::size_t i = 0; i < fields.size(); ++i) {
+            if (i) file << ',';
+            file << escapeCsv(fields[i]);
+        }
+        file << '\n';
+    };
+    if (needsHeader) writeRow(headers);
+    writeRow(row);
 }
 
 } // namespace threatfusion

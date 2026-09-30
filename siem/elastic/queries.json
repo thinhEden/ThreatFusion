@@ -1,0 +1,10 @@
+[
+  {"id":"tf-maintenance-baseline","title":"TF - Investigate engineering writes","kql":"source.ip: \"10.50.1.20\" and network.protocol: modbus and threatfusion.variant: baseline","purpose":"Identify writes that require checking against the maintenance ticket."},
+  {"id":"tf-retained-threats","title":"TF - Retained contextual alerts","kql":"threatfusion.variant: bounded and event.risk_score >= 60","purpose":"Investigate alerts that remain after bounded authorization checks."},
+  {"id":"tf-unknown-source","title":"TF - Unauthorized source","kql":"source.ip: \"10.50.1.99\" and destination.ip: \"10.50.2.10\"","purpose":"Pivot from unauthorized endpoint to affected PLC and command values."},
+  {"id":"tf-register-values","title":"TF - Dangerous register values","kql":"threatfusion.register_values > 60","purpose":"Find out-of-range writes, including those from a normally approved engineering workstation."},
+  {"id":"tf-peer-ablation","title":"TF - Compare peer-only and bounded policies","kql":"threatfusion.variant: (peer-only or bounded)","purpose":"Compare retained alerts and demonstrate why endpoint allowlisting alone is insufficient."},
+  {"id":"tf-counterexample","title":"TF - Indistinguishable-command challenge","kql":"threatfusion.case: challenge","purpose":"Show the baseline alert and contextual miss for approved-looking commands from a simulated compromised workstation."},
+  {"id":"tf-attack-command-message","title":"TF - ATT&CK T1692.001 command messages","kql":"threat.technique.id: \"T1692.001\" and threatfusion.variant: bounded","purpose":"Pivot from the ATT&CK for ICS technique to retained command-message alerts, then review each against its context audit."},
+  {"id":"tf-host-correlation","title":"TF - OT commands from a host with a host alert","kql":"threatfusion.variant: \"bounded-host\" and message: \"correlation:HOST-OT-001\"","purpose":"Commands retained because their source workstation raised a Windows detection in the lookback window. Open PB-03 for the host."}
+]

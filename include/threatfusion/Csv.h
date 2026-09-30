@@ -3,8 +3,12 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <ostream>
 
 namespace threatfusion {
+void writeCsvRow(std::ostream& stream, const std::vector<std::string>& row);
+void appendCsv(const std::string& path, const std::vector<std::string>& headers,
+               const std::vector<std::string>& row);
 
 using CsvRow = std::map<std::string, std::string>;
 

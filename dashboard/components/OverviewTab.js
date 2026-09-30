@@ -18,8 +18,8 @@ function RenderOverviewTab({
   // Group and count protocols dynamically from current alerts
   const protocolCounts = {};
   alerts.forEach(a => {
-    let proto = (a.protocol || 'MODBUS').toUpperCase();
-    if (proto === 'MODBUS') proto = 'Modbus TCP';
+    let proto = (a.protocol || 'Unknown').toUpperCase();
+    if (proto === 'MODBUS') proto = 'Modbus';
     else if (proto === 'DNP3') proto = 'DNP3';
     else if (proto === 'HTTP') proto = 'HTTP';
     else if (proto === 'TCP') proto = 'TCP';
@@ -49,11 +49,7 @@ function RenderOverviewTab({
         count: p.count,
         percentage: ((p.count / totalProtos) * 100).toFixed(1)
       }))
-    : [
-        { name: 'Modbus TCP', count: 0, percentage: '65.0' },
-        { name: 'DNP3', count: 0, percentage: '20.0' },
-        { name: 'TCP/UDP', count: 0, percentage: '15.0' }
-      ];
+    : [];
 
   const getProtoColorClass = (name) => {
     const n = name.toUpperCase();
@@ -75,11 +71,11 @@ function RenderOverviewTab({
           <span className="text-[10px] uppercase font-bold tracking-wider text-siemMuted">Active Alerts</span>
           <div className="flex justify-between items-baseline">
             <span className="text-2xl font-extrabold font-mono text-white">{totalAlertsCount}</span>
-            <span className="text-[10px] text-siemMuted font-mono">100% normal stream</span>
+            <span className="text-[10px] text-siemMuted font-mono">{simActive ? 'Demo' : 'Observed alerts'}</span>
           </div>
         </div>
         <div className="bg-siemCard border border-siemBorder rounded p-4 flex flex-col justify-between h-24 shadow-sm hover:border-slate-800 transition">
-          <span className="text-[10px] uppercase font-bold tracking-wider text-siemMuted">Triaged Incidents</span>
+          <span className="text-[10px] uppercase font-bold tracking-wider text-siemMuted">Alert Groups</span>
           <div className="flex justify-between items-baseline">
             <span className="text-2xl font-extrabold font-mono text-amber-500">{totalIncidentsCount}</span>
             <span className="text-[10px] text-amber-500/80 font-semibold">{incidents.filter(i=>i.status==='Open').length} pending triage</span>
@@ -95,8 +91,8 @@ function RenderOverviewTab({
         <div className="bg-siemCard border border-siemBorder rounded p-4 flex flex-col justify-between h-24 shadow-sm hover:border-slate-800 transition">
           <span className="text-[10px] uppercase font-bold tracking-wider text-siemMuted">Detection Latency</span>
           <div className="flex justify-between items-baseline">
-            <span className="text-2xl font-extrabold font-mono text-cyan-400">{detectionLatency}ms</span>
-            <span className="text-[10px] text-emerald-500 font-bold">Optimal Speed</span>
+            <span className="text-2xl font-extrabold font-mono text-cyan-400">{detectionLatency === 'N/A' ? 'N/A' : detectionLatency + ' ms'}</span>
+            <span className="text-[10px] text-siemMuted font-bold">Measured</span>
           </div>
         </div>
       </div>
@@ -106,7 +102,7 @@ function RenderOverviewTab({
         <div className="lg:col-span-3 bg-siemCard border border-siemBorder rounded p-5 flex flex-col justify-between">
           <div>
             <span className="text-[10px] uppercase font-bold text-siemMuted tracking-wider block mb-1">OT Protocol Distribution</span>
-            <h6 className="text-xs font-bold text-white mb-3">Active network traffic analysis</h6>
+            <h6 className="text-xs font-bold text-white mb-3">Alert protocol distribution</h6>
           </div>
           <div className="space-y-3.5 my-3">
             {finalProtocolData.map((proto, idx) => (
@@ -127,7 +123,7 @@ function RenderOverviewTab({
             ))}
           </div>
           <div className="text-[10px] text-siemMuted leading-relaxed pt-3 border-t border-siemBorder/60">
-            Real-time industrial protocol telemetry captured from sensor interfaces.
+            {alerts.length ? 'Protocols present in observed alerts.' : 'No alerts available.'}
           </div>
         </div>
 
@@ -211,7 +207,7 @@ function RenderOverviewTab({
                           <div className="text-[10px] uppercase font-bold text-sky-400 mb-2 tracking-wider">Raw Telemetry & Detector Insights</div>
                           <pre className="font-mono text-[11px] text-emerald-500 bg-black/60 border border-siemBorder p-4 rounded leading-relaxed overflow-x-auto">
                             {JSON.stringify({
-                              event_id: `TF-MSU-${a.detector.replace(/\s+/g, '')}-${idx}`,
+                              event_id: a.event_id,
                               timestamp: a.timestamp,
                               severity: a.severity,
                               detector: a.detector,
@@ -271,7 +267,7 @@ function RenderOverviewTab({
                         <span className="text-[11px] text-gray-300">{asset.status}</span>
                       </td>
                       <td className="p-3">
-                        <span className={`px-2 py-0.5 rounded font-mono text-[10px] font-bold ${riskColor}`}>{asset.risk}%</span>
+                        <span className={`px-2 py-0.5 rounded font-mono text-[10px] font-bold ${riskColor}`}>{asset.risk ?? 'N/A'}</span>
                       </td>
                     </tr>
                   );

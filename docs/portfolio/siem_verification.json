@@ -1,0 +1,31 @@
+{
+  "total": 394,
+  "variants": [
+    {
+      "key": "baseline",
+      "doc_count": 145
+    },
+    {
+      "key": "bounded-host",
+      "doc_count": 139
+    },
+    {
+      "key": "bounded",
+      "doc_count": 80
+    },
+    {
+      "key": "peer-only",
+      "doc_count": 30
+    }
+  ],
+  "native_security_alerts": 80,
+  "investigation_query_counts": {
+    "engineering_baseline": 115,
+    "retained_contextual": 80,
+    "unknown_source": 80,
+    "dangerous_values": 30,
+    "counterexample": 10,
+    "host_correlation": 109
+  },
+  "kibana": "available"
+}

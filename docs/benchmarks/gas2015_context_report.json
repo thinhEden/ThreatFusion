@@ -1,0 +1,446 @@
+{
+  "source": "http://www.ece.uah.edu/~thm0009/icsdatasets/IanArffDataset.arff",
+  "sha256": "970a7bcd3949d09ac7baff11603538b142f214ee47ed70baf9efb3344f4af459",
+  "engine_sha256": "8f93d89d65be46ceacbfcf1c857a3e5f1a8d9dfcf9dcc318ab057dc9d4599df5",
+  "rows": 274628,
+  "attack_fraction": 0.21865214034985508,
+  "attack_fraction_by_row_decile": [
+    0.223,
+    0.2232,
+    0.2295,
+    0.2112,
+    0.2078,
+    0.2066,
+    0.2369,
+    0.211,
+    0.1971,
+    0.2402
+  ],
+  "duplicate_rows_excluding_time_pct": 85.76,
+  "single_feature_shortcut_probe_f1": {
+    "pressure measurement": 0.3548,
+    "function": 0.2539,
+    "length": 0.222,
+    "inter_arrival": 0.1266,
+    "gain": 0.0587
+  },
+  "split_epoch": {
+    "start": 1418682163.170388,
+    "train_end": 1418847577.7673814,
+    "validation_end": 1418902715.9663792,
+    "end": 1418957854.165377
+  },
+  "training_benign_writes": 29223,
+  "threshold": 60,
+  "splits": {
+    "validation": {
+      "requests": 28311,
+      "labels": {
+        "Normal": 24065,
+        "Recon": 496,
+        "DoS": 285,
+        "MPCI": 2268,
+        "MFCI": 446,
+        "MSCI": 751
+      },
+      "variants": {
+        "baseline": {
+          "all_requests": {
+            "TP": 3535,
+            "TN": 14155,
+            "FP": 9910,
+            "FN": 711,
+            "precision": 0.2629230197099293,
+            "recall": 0.8325482807348092,
+            "f1": 0.39963823413034877,
+            "false_positive_rate": 0.41180137128610017
+          },
+          "fc16_writes": {
+            "TP": 3304,
+            "TN": 0,
+            "FP": 9910,
+            "FN": 0,
+            "precision": 0.25003783865597096,
+            "recall": 1.0,
+            "f1": 0.40004843201356094,
+            "false_positive_rate": 1.0
+          },
+          "recall_by_category": {
+            "MSCI": 1.0,
+            "MPCI": 1.0,
+            "MFCI": 0.0,
+            "DoS": 1.0,
+            "Recon": 0.4657
+          },
+          "attack_ids_by_category": {
+            "DoS": {
+              "T1692.001": 1.0
+            },
+            "MFCI": {},
+            "MPCI": {
+              "T1692.001": 1.0
+            },
+            "MSCI": {
+              "T1692.001": 1.0
+            },
+            "Recon": {
+              "T0888": 0.4294,
+              "T1692.001": 0.0363
+            }
+          },
+          "processing_ms": {
+            "p50": 0.0026,
+            "p95": 0.005,
+            "p99": 0.018
+          },
+          "context_decisions": {}
+        },
+        "envelope": {
+          "all_requests": {
+            "TP": 2181,
+            "TN": 24065,
+            "FP": 0,
+            "FN": 2065,
+            "precision": 1.0,
+            "recall": 0.5136599152143193,
+            "f1": 0.6786992375914113,
+            "false_positive_rate": 0.0
+          },
+          "fc16_writes": {
+            "TP": 1950,
+            "TN": 9910,
+            "FP": 0,
+            "FN": 1354,
+            "precision": 1.0,
+            "recall": 0.5901937046004843,
+            "f1": 0.74229158736201,
+            "false_positive_rate": 0.0
+          },
+          "recall_by_category": {
+            "MSCI": 0.0,
+            "MPCI": 0.8598,
+            "MFCI": 0.0,
+            "DoS": 0.0,
+            "Recon": 0.4657
+          },
+          "attack_ids_by_category": {
+            "DoS": {},
+            "MFCI": {},
+            "MPCI": {
+              "T1692.001": 0.8598
+            },
+            "MSCI": {},
+            "Recon": {
+              "T0888": 0.4294,
+              "T1692.001": 0.0363
+            }
+          },
+          "processing_ms": {
+            "p50": 0.0029,
+            "p95": 0.0066,
+            "p99": 0.0084
+          },
+          "context_decisions": {
+            "Write inside commissioned operating envelope": 11264,
+            "Parameter outside operating envelope: gain": 466,
+            "Parameter outside operating envelope: cycle time": 385,
+            "Parameter outside operating envelope: setpoint": 254,
+            "Parameter outside operating envelope: rate": 447,
+            "Parameter outside operating envelope: reset rate": 253,
+            "Parameter outside operating envelope: deadband": 145
+          }
+        },
+        "envelope_state_review": {
+          "all_requests": {
+            "TP": 2606,
+            "TN": 23539,
+            "FP": 526,
+            "FN": 1640,
+            "precision": 0.8320561941251596,
+            "recall": 0.6137541215261423,
+            "f1": 0.7064245052859853,
+            "false_positive_rate": 0.021857469353833366
+          },
+          "fc16_writes": {
+            "TP": 2375,
+            "TN": 9384,
+            "FP": 526,
+            "FN": 929,
+            "precision": 0.818683212685281,
+            "recall": 0.7188256658595642,
+            "f1": 0.765511684125705,
+            "false_positive_rate": 0.05307769929364278
+          },
+          "recall_by_category": {
+            "MSCI": 0.2597,
+            "MPCI": 0.955,
+            "MFCI": 0.0,
+            "DoS": 0.0491,
+            "Recon": 0.4657
+          },
+          "attack_ids_by_category": {
+            "DoS": {
+              "T1692.001": 0.0491
+            },
+            "MFCI": {},
+            "MPCI": {
+              "T1692.001": 0.955
+            },
+            "MSCI": {
+              "T1692.001": 0.2597
+            },
+            "Recon": {
+              "T0888": 0.4294,
+              "T1692.001": 0.0363
+            }
+          },
+          "processing_ms": {
+            "p50": 0.0029,
+            "p95": 0.0067,
+            "p99": 0.0093
+          },
+          "context_decisions": {
+            "Write inside commissioned operating envelope": 10313,
+            "State change retained for review": 951,
+            "Parameter outside operating envelope: gain": 466,
+            "Parameter outside operating envelope: cycle time": 385,
+            "Parameter outside operating envelope: setpoint": 254,
+            "Parameter outside operating envelope: rate": 447,
+            "Parameter outside operating envelope: reset rate": 253,
+            "Parameter outside operating envelope: deadband": 145
+          }
+        }
+      }
+    },
+    "test": {
+      "requests": 27223,
+      "labels": {
+        "Normal": 23335,
+        "Recon": 477,
+        "MPCI": 1808,
+        "MFCI": 646,
+        "DoS": 281,
+        "MSCI": 676
+      },
+      "variants": {
+        "baseline": {
+          "all_requests": {
+            "TP": 2997,
+            "TN": 13612,
+            "FP": 9723,
+            "FN": 891,
+            "precision": 0.2356132075471698,
+            "recall": 0.7708333333333334,
+            "f1": 0.3609104046242775,
+            "false_positive_rate": 0.4166702378401543
+          },
+          "fc16_writes": {
+            "TP": 2765,
+            "TN": 0,
+            "FP": 9723,
+            "FN": 0,
+            "precision": 0.22141255605381166,
+            "recall": 1.0,
+            "f1": 0.3625516291877008,
+            "false_positive_rate": 1.0
+          },
+          "recall_by_category": {
+            "MSCI": 1.0,
+            "MPCI": 1.0,
+            "MFCI": 0.0,
+            "DoS": 1.0,
+            "Recon": 0.4864
+          },
+          "attack_ids_by_category": {
+            "DoS": {
+              "T1692.001": 1.0
+            },
+            "MFCI": {},
+            "MPCI": {
+              "T1692.001": 1.0
+            },
+            "MSCI": {
+              "T1692.001": 1.0
+            },
+            "Recon": {
+              "T0888": 0.4486,
+              "T1692.001": 0.0377
+            }
+          },
+          "processing_ms": {
+            "p50": 0.0022,
+            "p95": 0.0047,
+            "p99": 0.0079
+          },
+          "context_decisions": {}
+        },
+        "envelope": {
+          "all_requests": {
+            "TP": 1659,
+            "TN": 23335,
+            "FP": 0,
+            "FN": 2229,
+            "precision": 1.0,
+            "recall": 0.42669753086419754,
+            "f1": 0.5981611681990265,
+            "false_positive_rate": 0.0
+          },
+          "fc16_writes": {
+            "TP": 1427,
+            "TN": 9723,
+            "FP": 0,
+            "FN": 1338,
+            "precision": 1.0,
+            "recall": 0.5160940325497287,
+            "f1": 0.6808206106870229,
+            "false_positive_rate": 0.0
+          },
+          "recall_by_category": {
+            "MSCI": 0.0,
+            "MPCI": 0.7893,
+            "MFCI": 0.0,
+            "DoS": 0.0,
+            "Recon": 0.4864
+          },
+          "attack_ids_by_category": {
+            "DoS": {},
+            "MFCI": {},
+            "MPCI": {
+              "T1692.001": 0.7893
+            },
+            "MSCI": {},
+            "Recon": {
+              "T0888": 0.4486,
+              "T1692.001": 0.0377
+            }
+          },
+          "processing_ms": {
+            "p50": 0.0027,
+            "p95": 0.0062,
+            "p99": 0.0175
+          },
+          "context_decisions": {
+            "Write inside commissioned operating envelope": 11061,
+            "Parameter outside operating envelope: deadband": 157,
+            "Parameter outside operating envelope: cycle time": 242,
+            "Parameter outside operating envelope: reset rate": 182,
+            "Parameter outside operating envelope: setpoint": 221,
+            "Parameter outside operating envelope: gain": 329,
+            "Parameter outside operating envelope: rate": 296
+          }
+        },
+        "envelope_state_review": {
+          "all_requests": {
+            "TP": 2070,
+            "TN": 22741,
+            "FP": 594,
+            "FN": 1818,
+            "precision": 0.777027027027027,
+            "recall": 0.5324074074074074,
+            "f1": 0.6318681318681318,
+            "false_positive_rate": 0.025455324619670025
+          },
+          "fc16_writes": {
+            "TP": 1838,
+            "TN": 9129,
+            "FP": 594,
+            "FN": 927,
+            "precision": 0.7557565789473685,
+            "recall": 0.6647377938517179,
+            "f1": 0.7073311525880316,
+            "false_positive_rate": 0.06109225547670472
+          },
+          "recall_by_category": {
+            "MSCI": 0.2086,
+            "MPCI": 0.9292,
+            "MFCI": 0.0,
+            "DoS": 0.0605,
+            "Recon": 0.4864
+          },
+          "attack_ids_by_category": {
+            "DoS": {
+              "T1692.001": 0.0605
+            },
+            "MFCI": {},
+            "MPCI": {
+              "T1692.001": 0.9292
+            },
+            "MSCI": {
+              "T1692.001": 0.2086
+            },
+            "Recon": {
+              "T0888": 0.4486,
+              "T1692.001": 0.0377
+            }
+          },
+          "processing_ms": {
+            "p50": 0.0042,
+            "p95": 0.0071,
+            "p99": 0.0182
+          },
+          "context_decisions": {
+            "State change retained for review": 1005,
+            "Write inside commissioned operating envelope": 10056,
+            "Parameter outside operating envelope: deadband": 157,
+            "Parameter outside operating envelope: cycle time": 242,
+            "Parameter outside operating envelope: reset rate": 182,
+            "Parameter outside operating envelope: setpoint": 221,
+            "Parameter outside operating envelope: gain": 329,
+            "Parameter outside operating envelope: rate": 296
+          }
+        }
+      }
+    }
+  },
+  "envelope": {
+    "system mode": {
+      "values": [
+        0.0,
+        1.0,
+        2.0
+      ]
+    },
+    "control scheme": {
+      "values": [
+        0.0,
+        1.0
+      ]
+    },
+    "pump": {
+      "values": [
+        0.0,
+        1.0
+      ]
+    },
+    "solenoid": {
+      "values": [
+        0.0,
+        1.0
+      ]
+    },
+    "setpoint": {
+      "min": 0.0,
+      "max": 19.9
+    },
+    "gain": {
+      "min": 110.0,
+      "max": 119.0
+    },
+    "reset rate": {
+      "min": 0.2,
+      "max": 0.3999
+    },
+    "deadband": {
+      "min": 0.2,
+      "max": 0.79
+    },
+    "cycle time": {
+      "min": 0.5,
+      "max": 1.49
+    },
+    "rate": {
+      "min": 0.0,
+      "max": 0.0
+    }
+  }
+}

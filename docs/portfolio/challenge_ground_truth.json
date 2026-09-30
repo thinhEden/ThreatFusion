@@ -1,0 +1,67 @@
+[
+  {
+    "event_id": "PCAP-4",
+    "frame": 4,
+    "timestamp": 1790762520.0,
+    "source_ip": "10.50.1.20",
+    "destination_ip": "10.50.2.10",
+    "function_code": 6,
+    "register": 100,
+    "value": 55,
+    "unit_id": 1,
+    "label": "malicious",
+    "scenario": "approved_looking_compromised_endpoint"
+  },
+  {
+    "event_id": "PCAP-7",
+    "frame": 7,
+    "timestamp": 1790762521.0,
+    "source_ip": "10.50.1.20",
+    "destination_ip": "10.50.2.10",
+    "function_code": 6,
+    "register": 100,
+    "value": 55,
+    "unit_id": 1,
+    "label": "malicious",
+    "scenario": "approved_looking_compromised_endpoint"
+  },
+  {
+    "event_id": "PCAP-10",
+    "frame": 10,
+    "timestamp": 1790762522.0,
+    "source_ip": "10.50.1.20",
+    "destination_ip": "10.50.2.10",
+    "function_code": 6,
+    "register": 100,
+    "value": 55,
+    "unit_id": 1,
+    "label": "malicious",
+    "scenario": "approved_looking_compromised_endpoint"
+  },
+  {
+    "event_id": "PCAP-13",
+    "frame": 13,
+    "timestamp": 1790762523.0,
+    "source_ip": "10.50.1.20",
+    "destination_ip": "10.50.2.10",
+    "function_code": 6,
+    "register": 100,
+    "value": 55,
+    "unit_id": 1,
+    "label": "malicious",
+    "scenario": "approved_looking_compromised_endpoint"
+  },
+  {
+    "event_id": "PCAP-16",
+    "frame": 16,
+    "timestamp": 1790762524.0,
+    "source_ip": "10.50.1.20",
+    "destination_ip": "10.50.2.10",
+    "function_code": 6,
+    "register": 100,
+    "value": 55,
+    "unit_id": 1,
+    "label": "malicious",
+    "scenario": "approved_looking_compromised_endpoint"
+  }
+]

@@ -1,3 +1,4 @@
+#include "threatfusion/AttackMapping.h"
 #include "threatfusion/BaselineDetector.h"
 #include "threatfusion/BehaviorDetector.h"
 #include "threatfusion/Csv.h"
@@ -10,6 +11,7 @@
 #include "threatfusion/RiskScorer.h"
 #include "threatfusion/SocketReceiver.h"
 #include "threatfusion/ThreatIntel.h"
+#include "threatfusion/OtContext.h"
 
 #include <chrono>
 #include <fstream>
@@ -17,8 +19,16 @@
 #include <map>
 #include <stdexcept>
 #include <vector>
+#include <iomanip>
+#include <sstream>
 
 using namespace threatfusion;
+
+static std::string precise(double value) {
+  std::ostringstream stream;
+  stream << std::setprecision(17) << value;
+  return stream.str();
+}
 
 struct Options {
   std::string mode = "batch";
@@ -41,6 +51,17 @@ struct Options {
   std::string alertsPath = "out/alerts.csv";
   std::string incidentsPath = "out/incidents.csv";
   std::string metricsPath = "out/metrics.txt";
+  std::string scoresPath;
+  std::string timingsPath;
+  std::string attackMapPath = "data/attack_mapping.csv";
+  bool attackMapRequired = false;
+  std::string contextPath;
+  std::string hostAlertsPath;
+  double hostAlertWindow = 3600;
+  std::string contextMode = "bounded";
+  std::string contextAuditPath = "out/context_audit.csv";
+  std::string normalizedEventsPath;
+  std::string pcapFilter;
   int threshold = 60;
 };
 
@@ -58,6 +79,12 @@ static void printUsage() {
       << "                    [--snort path --snort-config path]\n"
       << "                    [--alerts path] [--incidents path]\n"
       << "                    [--metrics path] [--threshold 60]\n";
+  std::cout << "                    [--scores path] (raw IF/LSTM scores for research)\n";
+  std::cout << "                    [--context policy.json --context-audit path]\n"
+               "                    [--context-mode bounded|peer-only] (peer-only is an unsafe ablation)\n"
+               "                    [--normalized-events path] [--pcap-filter expression] [--timings path]\n"
+               "                    [--host-alerts host_alerts.csv --host-alert-window 3600] (needs --context)\n"
+               "                    [--attack-map data/attack_mapping.csv] (MITRE ATT&CK IDs per detection)\n";
 }
 
 static Options parseArgs(int argc, char **argv) {
@@ -111,6 +138,28 @@ static Options parseArgs(int argc, char **argv) {
       options.incidentsPath = requireValue(arg);
     else if (arg == "--metrics")
       options.metricsPath = requireValue(arg);
+    else if (arg == "--scores")
+      options.scoresPath = requireValue(arg);
+    else if (arg == "--timings")
+      options.timingsPath = requireValue(arg);
+    else if (arg == "--attack-map") {
+      options.attackMapPath = requireValue(arg);
+      options.attackMapRequired = true;
+    }
+    else if (arg == "--context")
+      options.contextPath = requireValue(arg);
+    else if (arg == "--host-alerts")
+      options.hostAlertsPath = requireValue(arg);
+    else if (arg == "--host-alert-window")
+      options.hostAlertWindow = std::stod(requireValue(arg));
+    else if (arg == "--context-mode")
+      options.contextMode = requireValue(arg);
+    else if (arg == "--context-audit")
+      options.contextAuditPath = requireValue(arg);
+    else if (arg == "--normalized-events")
+      options.normalizedEventsPath = requireValue(arg);
+    else if (arg == "--pcap-filter")
+      options.pcapFilter = requireValue(arg);
     else if (arg == "--threshold")
       options.threshold = std::stoi(requireValue(arg));
     else if (arg == "--help" || arg == "-h") {
@@ -120,10 +169,18 @@ static Options parseArgs(int argc, char **argv) {
       throw std::runtime_error("Unknown argument: " + arg);
     }
   }
+  options.mode = toLower(options.mode);
+  if (options.mode != "batch" && options.mode != "stream") throw std::runtime_error("Unknown engine mode");
+  if (options.mode == "stream" && (!options.timingsPath.empty() || !options.normalizedEventsPath.empty()))
+    throw std::runtime_error("--timings and --normalized-events are batch-only exports");
+  if (!options.hostAlertsPath.empty() && options.contextPath.empty())
+    throw std::runtime_error("--host-alerts requires --context");
   return options;
 }
 
 int main(int argc, char **argv) {
+  std::ios::sync_with_stdio(false);
+  std::cin.tie(nullptr);
   try {
     const auto options = parseArgs(argc, argv);
 
@@ -132,6 +189,35 @@ int main(int argc, char **argv) {
 
     BehaviorDetector detector;
     detector.loadRules(options.rulesPath);
+
+    AttackMapping attackMapping;
+    if (std::ifstream(options.attackMapPath)) attackMapping.load(options.attackMapPath);
+    else if (options.attackMapRequired) throw std::runtime_error("Cannot open ATT&CK mapping: " + options.attackMapPath);
+    auto annotate = [&](std::vector<Detection>& detections) {
+      for (auto& detection : detections) detection.attack = attackMapping.lookup(detection);
+    };
+
+    OtContext context;
+    std::vector<std::vector<std::string>> contextAuditRows;
+    std::ofstream contextAuditStream;
+    const std::vector<std::string> auditHeaders = {"event_id", "timestamp", "policy_id", "raw_detections", "retained_detections", "suppressed_detections", "reason"};
+    if (!options.contextPath.empty()) {
+      if (options.contextMode != "bounded" && options.contextMode != "peer-only")
+        throw std::runtime_error("Unknown context mode");
+      context.load(options.contextPath, options.contextMode == "peer-only");
+      if (!options.hostAlertsPath.empty()) context.loadHostAlerts(options.hostAlertsPath, options.hostAlertWindow);
+      writeCsv(options.contextAuditPath, auditHeaders, {});
+      if (options.mode == "stream") contextAuditStream.open(options.contextAuditPath, std::ios::app);
+    }
+    auto applyContext = [&](const Event& event, std::vector<Detection>& detections) {
+      if (options.contextPath.empty()) return;
+      auto decision = context.apply(event, detections);
+      std::vector<std::string> row = {event.id, event.timestamp, decision.policyId, std::to_string(detections.size()),
+         std::to_string(decision.detections.size()), std::to_string(decision.suppressed), decision.reason};
+      if (options.mode == "stream") { writeCsvRow(contextAuditStream, row); contextAuditStream.flush(); }
+      else contextAuditRows.push_back(std::move(row));
+      detections = std::move(decision.detections);
+    };
 
     BaselineDetector baselineDetector;
     IsolationForestDetector isolationForestDetector;
@@ -147,7 +233,8 @@ int main(int argc, char **argv) {
 
     LSTMDetector lstmDetector;
     if (!options.lstmPath.empty()) {
-      lstmDetector.loadModel(options.lstmPath);
+      if (!lstmDetector.loadModel(options.lstmPath))
+        throw std::runtime_error("LSTM model could not be loaded");
     }
 
     ExternalScanner externalScanner;
@@ -185,6 +272,9 @@ int main(int argc, char **argv) {
         auto external = externalScanner.evaluate(event);
         detections.insert(detections.end(), external.begin(), external.end());
 
+        applyContext(event, detections);
+        annotate(detections);
+
         if (detections.empty()) {
           return;
         }
@@ -202,29 +292,16 @@ int main(int argc, char **argv) {
                   << " | Verdict: " << alert.verdict
                   << " | Reasons: " << alert.reasons << "\n";
 
-        // Append alert to stream log file
-        ensureParentDirectory("out/alerts_stream.csv");
-        bool fileExists = std::ifstream("out/alerts_stream.csv").good();
-        std::ofstream outStream("out/alerts_stream.csv", std::ios::app);
-        if (outStream.is_open()) {
-          if (!fileExists) {
-            outStream
-                << "incident_id,event_id,timestamp,src_ip,dst_ip,asset_role,"
-                   "protocol,"
-                << "classification,top_severity,asset_criticality,threat_"
-                   "severity,"
-                << "confidence_score,risk_score,latency_ms,verdict,reasons\n";
-          }
-          outStream << alert.incidentId << "," << alert.eventId << ","
-                    << alert.timestamp << "," << alert.srcIp << ","
-                    << alert.dstIp << "," << alert.assetRole << ","
-                    << alert.protocol << "," << alert.classification << ","
-                    << alert.topSeverity << "," << alert.assetCriticality << ","
-                    << alert.threatSeverity << "," << alert.confidenceScore
-                    << "," << alert.riskScore << "," << alert.latencyMs << ","
-                    << "\"" << alert.verdict << "\",\"" << alert.reasons
-                    << "\"\n";
-        }
+        appendCsv("out/alerts_stream.csv",
+          {"incident_id", "event_id", "timestamp", "src_ip", "dst_ip", "asset_role",
+           "protocol", "classification", "top_severity", "asset_criticality",
+           "threat_severity", "confidence_score", "risk_score", "latency_ms", "verdict", "reasons",
+           "attack_techniques"},
+          {alert.incidentId, alert.eventId, alert.timestamp, alert.srcIp, alert.dstIp,
+           alert.assetRole, alert.protocol, alert.classification, alert.topSeverity,
+           precise(alert.assetCriticality), precise(alert.threatSeverity),
+           precise(alert.confidenceScore), std::to_string(alert.riskScore),
+           precise(alert.latencyMs), alert.verdict, alert.reasons, alert.attack});
       };
 
       if (!receiver.start(options.port, callback)) {
@@ -244,10 +321,19 @@ int main(int argc, char **argv) {
     IngestionOptions ingestionOptions;
     ingestionOptions.format = options.inputFormat;
     ingestionOptions.tsharkPath = options.tsharkPath;
+    ingestionOptions.pcapFilter = options.pcapFilter;
     const auto events = loadEvents(options.eventsPath, ingestionOptions);
+    if (!options.normalizedEventsPath.empty()) {
+      ensureParentDirectory(options.normalizedEventsPath);
+      std::ofstream normalizedFile(options.normalizedEventsPath);
+      if (!normalizedFile) throw std::runtime_error("Cannot write normalized events");
+      for (const auto& event : events) normalizedFile << eventJson(event) << '\n';
+    }
 
     RiskScorer scorer;
     std::vector<Alert> alerts;
+    std::vector<std::vector<std::string>> scoreRows;
+    std::vector<std::vector<std::string>> timingRows;
 
     for (const auto &event : events) {
       const auto detectionStart = std::chrono::steady_clock::now();
@@ -264,7 +350,18 @@ int main(int argc, char **argv) {
       auto external = externalScanner.evaluate(event);
       detections.insert(detections.end(), external.begin(), external.end());
 
+      applyContext(event, detections);
+      annotate(detections);
+
+      if (!options.scoresPath.empty()) {
+        const auto error = lstmDetector.lastError();
+        scoreRows.push_back({event.id, event.label,
+          precise(isolationForestDetector.anomalyScore(event)),
+          error ? precise(*error) : ""});
+      }
       if (detections.empty()) {
+        if (!options.timingsPath.empty()) timingRows.push_back({event.id,
+          precise(std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - detectionStart).count())});
         continue;
       }
 
@@ -273,6 +370,7 @@ int main(int argc, char **argv) {
       alert.latencyMs = std::chrono::duration<double, std::milli>(
                             detectionEnd - detectionStart)
                             .count();
+      if (!options.timingsPath.empty()) timingRows.push_back({event.id, precise(alert.latencyMs)});
       alerts.push_back(alert);
     }
 
@@ -286,12 +384,18 @@ int main(int argc, char **argv) {
       event.assetRole =
           detection.assetRole.empty() ? "network" : detection.assetRole;
       event.protocol = detection.protocol.empty() ? "pcap" : detection.protocol;
-      auto alert = scorer.score(event, {detection});
+      std::vector<Detection> external = {detection};
+      annotate(external);
+      auto alert = scorer.score(event, external);
       alert.latencyMs = 0.0;
       alerts.push_back(alert);
     }
 
     const auto incidents = aggregateIncidents(alerts);
+    if (!options.contextPath.empty()) writeCsv(options.contextAuditPath, auditHeaders, contextAuditRows);
+    if (!options.timingsPath.empty()) writeCsv(options.timingsPath, {"event_id", "processing_ms"}, timingRows);
+    if (!options.scoresPath.empty())
+      writeCsv(options.scoresPath, {"event_id", "label", "if_score", "lstm_error"}, scoreRows);
 
     std::map<std::string, Alert> alertsByEventId;
     std::vector<std::vector<std::string>> alertRows;
@@ -304,14 +408,14 @@ int main(int argc, char **argv) {
            std::to_string(alert.threatSeverity),
            std::to_string(alert.confidenceScore),
            std::to_string(alert.riskScore), std::to_string(alert.latencyMs),
-           alert.verdict, alert.reasons});
+           alert.verdict, alert.reasons, alert.attack});
     }
 
     writeCsv(options.alertsPath,
              {"incident_id", "event_id", "timestamp", "src_ip", "dst_ip",
               "asset_role", "protocol", "classification", "top_severity",
               "asset_criticality", "threat_severity", "confidence_score",
-              "risk_score", "latency_ms", "verdict", "reasons"},
+              "risk_score", "latency_ms", "verdict", "reasons", "attack_techniques"},
              alertRows);
 
     std::vector<std::vector<std::string>> incidentRows;

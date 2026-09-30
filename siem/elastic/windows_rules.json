@@ -1,0 +1,102 @@
+[
+  {
+    "id": "WIN-001",
+    "name": "Encoded PowerShell command line",
+    "description": "PowerShell started with an encoded command (-enc / -EncodedCommand / -ec), a common way to hide stager code.",
+    "techniques": [
+      "T1059.001"
+    ],
+    "severity": "high",
+    "risk_score": 73,
+    "evidence": "Sysmon 1, Security 4688",
+    "query": "any where event.code in (\"1\", \"4688\") and process.name : \"powershell.exe\" and process.command_line : (\"* -enc *\", \"* -encodedcommand *\", \"* -ec *\", \"* -e *\")",
+    "false_positives": "Management agents and installers that pass scripts with -EncodedCommand (for example SCCM or Intune scripts). Allow-list them by signed parent process and host group, not by command line.",
+    "language": "eql"
+  },
+  {
+    "id": "WIN-002",
+    "name": "LSASS memory read access",
+    "description": "A process opened lsass.exe with PROCESS_VM_READ (0x10) in the granted access mask, which credential dumpers need.",
+    "techniques": [
+      "T1003.001"
+    ],
+    "severity": "critical",
+    "risk_score": 90,
+    "evidence": "Sysmon 10",
+    "query": "any where event.code == \"10\" and winlog.event_data.TargetImage : \"*lsass.exe\" and modulo(number(winlog.event_data.GrantedAccess, 16), 32) >= 16",
+    "false_positives": "Security products (Defender MsMpEng.exe, EDR sensors) and Windows Error Reporting legitimately read LSASS memory. Exclude them by verified executable path and signature.",
+    "language": "eql"
+  },
+  {
+    "id": "WIN-003",
+    "name": "LSASS dump via comsvcs.dll MiniDump",
+    "description": "rundll32 calling the MiniDump export of comsvcs.dll (by name or ordinal #24) to write a process memory dump.",
+    "techniques": [
+      "T1003.001"
+    ],
+    "severity": "critical",
+    "risk_score": 90,
+    "evidence": "Sysmon 1, Security 4688",
+    "query": "any where event.code in (\"1\", \"4688\") and process.command_line : \"*comsvcs*\" and process.command_line : (\"*minidump*\", \"*#24*\")",
+    "false_positives": "Rare. Troubleshooting sessions may dump processes with comsvcs.dll, but dumping lsass.exe this way should always be investigated.",
+    "language": "eql"
+  },
+  {
+    "id": "WIN-004",
+    "name": "Service installed to run a command interpreter",
+    "description": "A new service whose binary path launches cmd, PowerShell or another interpreter, as PsExec-style remote execution does.",
+    "techniques": [
+      "T1543.003",
+      "T1569.002"
+    ],
+    "severity": "high",
+    "risk_score": 73,
+    "evidence": "System 7045, Security 4697",
+    "query": "any where (event.code == \"7045\" and winlog.event_data.ImagePath : (\"*%COMSPEC%*\", \"*cmd*\", \"*powershell*\", \"*mshta*\", \"*rundll32*\")) or (event.code == \"4697\" and winlog.event_data.ServiceFileName : (\"*%COMSPEC%*\", \"*cmd*\", \"*powershell*\", \"*mshta*\", \"*rundll32*\"))",
+    "false_positives": "Software deployment tools and legitimate PsExec use by administrators install short-lived services that run cmd. Correlate with change records.",
+    "language": "eql"
+  },
+  {
+    "id": "WIN-005",
+    "name": "Scheduled task created to run a script interpreter",
+    "description": "schtasks /create or a new task (4698) whose action runs PowerShell, cmd or a script host.",
+    "techniques": [
+      "T1053.005"
+    ],
+    "severity": "medium",
+    "risk_score": 47,
+    "evidence": "Sysmon 1, Security 4688, Security 4698",
+    "query": "any where (event.code in (\"1\", \"4688\") and process.name : \"schtasks.exe\" and process.command_line : \"*/create*\" and process.command_line : (\"*powershell*\", \"*cmd*\", \"*wscript*\", \"*cscript*\", \"*mshta*\")) or (event.code == \"4698\" and winlog.event_data.TaskContent : (\"*powershell*\", \"*cmd.exe*\", \"*wscript*\", \"*cscript*\", \"*mshta*\"))",
+    "false_positives": "Administrative and vendor maintenance tasks often run PowerShell. Baseline existing task names per host group and alert on new ones.",
+    "language": "eql"
+  },
+  {
+    "id": "WIN-006",
+    "name": "Script host spawning PowerShell",
+    "description": "wscript or cscript starting PowerShell, typical of VBScript or JScript droppers.",
+    "techniques": [
+      "T1059.005",
+      "T1059.001"
+    ],
+    "severity": "high",
+    "risk_score": 73,
+    "evidence": "Sysmon 1, Security 4688",
+    "query": "any where event.code in (\"1\", \"4688\") and process.parent.name : (\"wscript.exe\", \"cscript.exe\") and process.name : \"powershell.exe\"",
+    "false_positives": "Legacy logon or inventory scripts in VBScript that call PowerShell. Allow-list them by script path.",
+    "language": "eql"
+  },
+  {
+    "id": "WIN-007",
+    "name": "Kerberos password spraying from one source",
+    "description": "One source address causes Kerberos failures for at least five different accounts within five minutes: unknown principal (4768, 0x6) or bad password during pre-authentication (4771, 0x18).",
+    "techniques": [
+      "T1110.003"
+    ],
+    "severity": "high",
+    "risk_score": 73,
+    "evidence": "Security 4768, Security 4771 (domain controller)",
+    "language": "esql",
+    "query": "FROM threatfusion-windows-otrf\n| WHERE (event.code == \"4771\" AND winlog.event_data.Status == \"0x18\") OR (event.code == \"4768\" AND winlog.event_data.Status == \"0x6\")\n| EVAL source_ip = REPLACE(winlog.event_data.IpAddress, \"^::ffff:\", \"\")\n| STATS failures = COUNT(*), accounts = COUNT_DISTINCT(winlog.event_data.TargetUserName), first_seen = MIN(@timestamp), last_seen = MAX(@timestamp) BY source_ip, threatfusion.dataset, window = BUCKET(@timestamp, 5 minutes)\n| WHERE accounts >= 5",
+    "false_positives": "A misconfigured service or a stale mapped drive retrying old credentials across several accounts, and NAT or proxy addresses aggregating many users. Check whether the accounts exist and whether any attempt later succeeded."
+  }
+]

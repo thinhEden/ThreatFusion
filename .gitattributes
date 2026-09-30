@@ -1,0 +1,2 @@
+# Keep raw research datasets byte-identical to their published archives.
+datasets/MSU_ICS/** -text

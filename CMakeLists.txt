@@ -8,6 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_library(threatfusion_core
+    src/AttackMapping.cpp
     src/BaselineDetector.cpp
     src/BehaviorDetector.cpp
     src/Csv.cpp
@@ -20,6 +21,8 @@ add_library(threatfusion_core
     src/ThreatIntel.cpp
     src/SocketReceiver.cpp
     src/LSTMDetector.cpp
+    src/OtContext.cpp
+    src/Process.cpp
 )
 
 target_include_directories(threatfusion_core PUBLIC include)
@@ -33,6 +36,9 @@ if(USE_LIBTORCH)
     find_package(Torch REQUIRED)
     target_compile_definitions(threatfusion_core PUBLIC USE_LIBTORCH)
     target_link_libraries(threatfusion_core PUBLIC ${TORCH_LIBRARIES})
+    if(MSVC)
+        target_compile_options(threatfusion_core PRIVATE /bigobj)
+    endif()
 endif()
 
 add_executable(threatfusion src/main.cpp)
@@ -43,3 +49,16 @@ enable_testing()
 add_executable(threatfusion_tests tests/test_engine.cpp)
 target_link_libraries(threatfusion_tests PRIVATE threatfusion_core)
 add_test(NAME threatfusion_tests COMMAND threatfusion_tests)
+if(MSVC)
+    target_compile_options(threatfusion_tests PRIVATE /UNDEBUG)
+else()
+    target_compile_options(threatfusion_tests PRIVATE -UNDEBUG)
+endif()
+if(USE_LIBTORCH AND WIN32)
+    get_filename_component(LIBTORCH_ROOT "${Torch_DIR}/../../.." ABSOLUTE)
+    file(GLOB TORCH_DLLS "${LIBTORCH_ROOT}/lib/*.dll")
+    foreach(TARGET threatfusion threatfusion_tests)
+        add_custom_command(TARGET ${TARGET} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${TORCH_DLLS} $<TARGET_FILE_DIR:${TARGET}>)
+    endforeach()
+endif()

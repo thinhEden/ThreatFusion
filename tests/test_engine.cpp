@@ -1,5 +1,8 @@
+#include "threatfusion/AttackMapping.h"
 #include "threatfusion/BehaviorDetector.h"
 #include "threatfusion/Csv.h"
+#include "threatfusion/DataIngestion.h"
+#include "threatfusion/OtContext.h"
 #include "threatfusion/LSTMDetector.h"
 #include "threatfusion/RiskScorer.h"
 #include "threatfusion/SocketReceiver.h"
@@ -7,6 +10,7 @@
 
 #include <cassert>
 #include <cstdio>
+#include <fstream>
 
 using namespace threatfusion;
 
@@ -15,6 +19,29 @@ int main() {
   assert(row.size() == 3);
   assert(row[1] == "b,c");
   assert(row[2] == "d\"e");
+
+  {
+    const char* log = "test_schema.csv";
+    writeCsv(log, {"id"}, {{"old"}});
+    appendCsv(log, {"id", "attack"}, {"new", "T1692.001"});
+    assert(readCsv(log).at(0).at("attack") == "T1692.001");
+    assert(readCsv(std::string(log) + ".schema-1.bak").at(0).at("id") == "old");
+    std::remove(log);
+    std::remove((std::string(log) + ".schema-1.bak").c_str());
+  }
+
+  const auto parsed = parseJsonEvent(R"({"id":"json-1","payload_path":"C:\\lab\\file\"name.bin","extra_features":[0.25,-2,1e-3]})");
+  assert(parsed.extraFeatures.size() == 3);
+  assert(parsed.extraFeatures[1] == -2.0);
+  assert(parsed.payloadPath == "C:\\lab\\file\"name.bin");
+  bool invalidJson = false;
+  try { parseJsonEvent(R"({"id":"bad","extra_features":["oops"]})"); }
+  catch (...) { invalidJson = true; }
+  assert(invalidJson);
+  invalidJson = false;
+  try { parseJsonEvent(R"({"id":"bad","unit_id":1.5,"register_values":[55.5]})"); }
+  catch (...) { invalidJson = true; }
+  assert(invalidJson);
 
   const auto rulesPath = "test_rules.csv";
   writeCsv(rulesPath,
@@ -42,6 +69,160 @@ int main() {
   assert(alert.verdict == "critical" || alert.verdict == "malicious");
 
   std::remove(rulesPath);
+
+  {
+    const char* policy = "test_context.json";
+    std::ofstream config(policy);
+    config << R"({"authorizations":[{"ticket_id":"CHG-1","source_ip":"10.0.0.1","destination_ip":"10.0.0.2","unit_id":1,"function_codes":[6,16],"register_start":100,"register_end":101,"value_min":50,"value_max":60,"start_utc":"2026-09-30T10:00:00Z","end_utc":"2026-09-30T10:10:00Z","max_commands":2}]})";
+    config.close();
+    OtContext context;
+    context.load(policy);
+    Event write;
+    write.protocol = "modbus"; write.isRequest = true; write.srcIp = "10.0.0.1"; write.dstIp = "10.0.0.2";
+    write.timestamp = "2026-09-30T10:01:00Z"; write.unitId = 1; write.functionCode = 6;
+    write.registerAddress = 100; write.registerCount = 1; write.registerValues = {55};
+    const std::vector<Detection> candidate = {{"event", "behavior", "BR-001", "high", "Command Injection", "write", .8}};
+    assert(context.apply(write, candidate).suppressed == 1);
+    assert(context.apply(write, candidate).suppressed == 1);
+    assert(context.apply(write, candidate).suppressed == 0);
+    context.load(policy);
+    write.unitId = 2; assert(context.apply(write, candidate).suppressed == 0); write.unitId = 1;
+    write.registerAddress = 102; assert(context.apply(write, candidate).suppressed == 0); write.registerAddress = 100;
+    write.registerValues = {900}; assert(context.apply(write, candidate).suppressed == 0); write.registerValues = {55};
+    write.functionCode = 16; write.registerCount = 2; assert(context.apply(write, candidate).suppressed == 0);
+    write.functionCode = 6; write.registerCount = 1;
+    write.timestamp = "2026-09-30T10:10:00Z"; assert(context.apply(write, candidate).suppressed == 0);
+    write.timestamp = "2026-09-30T10:01:00Z";
+    auto corroborated = candidate;
+    corroborated.push_back({"event", "threat_intel", "ioc", "critical", "IOC", "evidence", .95});
+    assert(context.apply(write, corroborated).detections.size() == 2);
+    write.label = "malicious";
+    assert(context.apply(write, candidate).suppressed == 1); // Labels are never a context input.
+    assert(context.apply(write, candidate).suppressed == 0); // Corroborated write consumed the first slot.
+    std::remove(policy);
+  }
+
+  {
+    const auto withProcess = parseJsonEvent(R"({"id":"p","process_values":{"setpoint":12.5,"pump":1}})");
+    assert(withProcess.processValues.at("setpoint") == 12.5 && withProcess.processValues.size() == 2);
+    assert(parseJsonEvent(eventJson(withProcess)).processValues == withProcess.processValues);
+    bool invalidProcess = false;
+    try { parseJsonEvent(R"({"id":"bad","process_values":{"pump":"on"}})"); }
+    catch (...) { invalidProcess = true; }
+    assert(invalidProcess);
+
+    const char* policy = "test_envelope.json";
+    auto writePolicy = [&](bool retainStateChanges) {
+      std::ofstream config(policy);
+      config << R"({"operating_envelope":{"id":"ENV-1","unit_id":4,"function_codes":[16],"retain_state_changes":)"
+             << (retainStateChanges ? "true" : "false")
+             << R"(,"parameters":{"setpoint":{"min":10,"max":20},"pump":{"values":[0,1]}}}})";
+    };
+    writePolicy(false);
+    OtContext context;
+    context.load(policy);
+    Event write;
+    write.protocol = "modbus"; write.isRequest = true; write.unitId = 4; write.functionCode = 16;
+    write.processValues = {{"setpoint", 15}, {"pump", 1}};
+    const std::vector<Detection> candidate = {{"event", "behavior", "BR-001", "high", "Command Injection", "write", .8}};
+    assert(context.apply(write, candidate).suppressed == 1);
+    write.processValues["setpoint"] = 25; assert(context.apply(write, candidate).suppressed == 0);
+    write.processValues["setpoint"] = 15; write.processValues["pump"] = 2;
+    assert(context.apply(write, candidate).suppressed == 0);
+    write.processValues.erase("pump"); assert(context.apply(write, candidate).suppressed == 0); // Missing parameter is retained.
+    write.processValues["pump"] = 1;
+    write.unitId = 5; assert(context.apply(write, candidate).suppressed == 0); write.unitId = 4;
+    auto corroborated = candidate;
+    corroborated.push_back({"event", "threat_intel", "ioc", "critical", "IOC", "evidence", .95});
+    assert(context.apply(write, corroborated).detections.size() == 2);
+
+    writePolicy(true);
+    context.load(policy);
+    assert(context.apply(write, candidate).suppressed == 1);  // First observed write has no prior state.
+    assert(context.apply(write, candidate).suppressed == 1);  // Repeated state.
+    auto read = write;
+    read.functionCode = 3;
+    read.processValues["pump"] = 0;
+    context.apply(read, {}); // A read must not replace the previous write state.
+    write.processValues["pump"] = 0;
+    const auto changed = context.apply(write, candidate);
+    assert(changed.suppressed == 0 && changed.reason == "State change retained for review");
+    assert(context.apply(write, candidate).suppressed == 1);  // Same state again.
+
+    std::ofstream(policy) << R"({"operating_envelope":{"id":"ENV-1","unit_id":4,"function_codes":[3],"parameters":{"pump":{"values":[0]}}}})";
+    bool invalidEnvelope = false;
+    try { context.load(policy); }
+    catch (...) { invalidEnvelope = true; }
+    assert(invalidEnvelope);
+    std::remove(policy);
+  }
+
+  {
+    const char* policy = "test_host_policy.json";
+    const char* hosts = "test_host_alerts.csv";
+    std::ofstream(policy) << R"({"authorizations":[{"ticket_id":"CHG-1","source_ip":"10.0.0.1","destination_ip":"10.0.0.2","unit_id":1,"function_codes":[6],"register_start":100,"register_end":101,"value_min":50,"value_max":60,"start_utc":"2026-09-30T10:00:00Z","end_utc":"2026-09-30T10:10:00Z","max_commands":60}]})";
+    writeCsv(hosts, {"host_ip", "timestamp", "rule_id", "techniques"}, {{"10.0.0.1", "2026-09-30T10:01:30Z", "WIN-001", "T1059.001"}});
+    OtContext context;
+    context.load(policy);
+    context.loadHostAlerts(hosts, 60);
+    Event write;
+    write.id = "w"; write.protocol = "modbus"; write.isRequest = true; write.srcIp = "10.0.0.1"; write.dstIp = "10.0.0.2";
+    write.unitId = 1; write.functionCode = 6; write.registerAddress = 100; write.registerCount = 1; write.registerValues = {55};
+    const std::vector<Detection> candidate = {{"w", "behavior", "BR-001", "high", "Command Injection", "write", .8}};
+    write.timestamp = "2026-09-30T10:01:00Z";  // Before the host alert: the ticket still applies.
+    assert(context.apply(write, candidate).suppressed == 1);
+    write.timestamp = "2026-09-30T10:02:00Z";  // 30 s after the alert: retained and correlated.
+    const auto correlated = context.apply(write, candidate);
+    assert(correlated.suppressed == 0 && correlated.policyId == "HOST-EVIDENCE");
+    assert(correlated.detections.size() == 2 && correlated.detections[1].indicator == "HOST-OT-001");
+    write.timestamp = "2026-09-30T10:02:31Z";  // Outside the 60 s lookback.
+    assert(context.apply(write, candidate).suppressed == 1);
+    write.timestamp = "2026-09-30T10:02:00Z";
+    write.srcIp = "10.0.0.9";  // No host alert for this source.
+    assert(context.apply(write, candidate).detections.size() == 1);
+    write.srcIp = "10.0.0.1";
+    assert(context.apply(write, {}).detections.empty());  // No OT detection, nothing to correlate.
+    std::remove(policy);
+    writeCsv(hosts, {"host_ip", "timestamp", "rule_id", "techniques"},
+             {{"10.0.0.1", "2026-09-30T10:01:30.500Z", "WIN-001", "T1059.001"}});
+    context.loadHostAlerts(hosts, 60);
+    write.timestamp = "2026-09-30T10:01:30.499Z";
+    assert(context.apply(write, candidate).suppressed == 1);
+    write.timestamp = "2026-09-30T10:01:30.501Z";
+    assert(context.apply(write, candidate).policyId == "HOST-EVIDENCE");
+    write.timestamp = "2026-09-30T10:02:30.501Z";
+    assert(context.apply(write, candidate).suppressed == 1);
+    std::remove(hosts);
+  }
+
+  {
+    const char* mapPath = "test_attack_map.csv";
+    writeCsv(mapPath, {"source", "indicator", "techniques", "software", "confidence", "rationale"},
+             {{"behavior", "R1", "T1692.001", "", "high", "write"},
+              {"behavior", "R2", "", "", "none", "heuristic"},
+              {"suricata", "2100104", "T0858", "", "high", "stop"},
+              {"yara", "ICS_Stuxnet_Production", "", "S0603", "medium", "lab"}});
+    AttackMapping mapping;
+    mapping.load(mapPath);
+    Detection write{"e", "behavior", "R1", "high", "Command Injection", "write", .8};
+    assert(mapping.lookup(write) == "T1692.001");
+    assert(mapping.lookup({"e", "behavior", "R2"}).empty());
+    assert(mapping.lookup({"e", "behavior", "unknown"}).empty());
+    Detection suricata;
+    suricata.source = "suricata";
+    suricata.indicator = "09/30/2026-10:00:00.000000  [**] [1:2100104:1] THREATFUSION S7comm CPU Stop Command [**]";
+    assert(mapping.lookup(suricata) == "T0858");
+    Detection yara;
+    yara.source = "yara";
+    yara.indicator = "ICS_Stuxnet_Production C:\\lab\\sample.bin";
+    assert(mapping.lookup(yara) == "S0603");
+    write.attack = mapping.lookup(write);
+    suricata.attack = "T0858|T1692.001";
+    Event target;
+    target.id = "e"; target.assetRole = "plc";
+    assert(RiskScorer().score(target, {write, suricata}).attack == "T0858|T1692.001");
+    std::remove(mapPath);
+  }
 
   // Test LSTMDetector
   {

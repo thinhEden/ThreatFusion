@@ -1,0 +1,624 @@
+{
+  "engine_sha256": "c09c9829fffe975cf603625e18288f0f45a9acdfbede71f4a5f6d6d06675acaf",
+  "host": "Windows-11-10.0.26200-SP0",
+  "data_type": "offline synthetic Modbus, not a standard research dataset",
+  "risk_threshold": 60,
+  "policy_sha256": "37dd3e6b23fc39ab4e50a5047cea22384541c72a353e9bf710e5395203b11153",
+  "captures": {
+    "main": {
+      "baseline": {
+        "metrics": {
+          "TP": 80,
+          "TN": 200,
+          "FP": 60,
+          "FN": 0,
+          "precision": 0.5714285714285714,
+          "recall": 1.0,
+          "f1": 0.7272727272727273,
+          "false_positive_rate": 0.23076923076923078
+        },
+        "raw_alert_rows": 140,
+        "suppressed_candidates": 0,
+        "processing_ms": {
+          "p50": 0.0024,
+          "p95": 0.0054,
+          "p99": 0.0087
+        },
+        "wall_seconds_including_parser_and_startup": 0.6132027999847196,
+        "scenarios": {
+          "approved_maintenance": {
+            "TP": 0,
+            "TN": 0,
+            "FP": 60,
+            "FN": 0,
+            "precision": 0.0,
+            "recall": 0,
+            "f1": 0.0,
+            "false_positive_rate": 1.0
+          },
+          "lab_ioc_source": {
+            "TP": 10,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "false_positive_rate": 0
+          },
+          "normal_polling": {
+            "TP": 0,
+            "TN": 200,
+            "FP": 0,
+            "FN": 0,
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "false_positive_rate": 0.0
+          },
+          "outside_maintenance_window": {
+            "TP": 10,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "false_positive_rate": 0
+          },
+          "outside_register_scope": {
+            "TP": 10,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "false_positive_rate": 0
+          },
+          "replayed_over_budget": {
+            "TP": 10,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "false_positive_rate": 0
+          },
+          "unauthorized_source": {
+            "TP": 20,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "false_positive_rate": 0
+          },
+          "unsafe_value": {
+            "TP": 10,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "false_positive_rate": 0
+          },
+          "wrong_unit": {
+            "TP": 10,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "false_positive_rate": 0
+          }
+        }
+      },
+      "peer-only": {
+        "metrics": {
+          "TP": 30,
+          "TN": 260,
+          "FP": 0,
+          "FN": 50,
+          "precision": 1.0,
+          "recall": 0.375,
+          "f1": 0.5454545454545454,
+          "false_positive_rate": 0.0
+        },
+        "raw_alert_rows": 30,
+        "suppressed_candidates": 110,
+        "processing_ms": {
+          "p50": 0.0032,
+          "p95": 0.0072,
+          "p99": 0.0129
+        },
+        "wall_seconds_including_parser_and_startup": 0.6226709000184201,
+        "scenarios": {
+          "approved_maintenance": {
+            "TP": 0,
+            "TN": 60,
+            "FP": 0,
+            "FN": 0,
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "false_positive_rate": 0.0
+          },
+          "lab_ioc_source": {
+            "TP": 10,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "false_positive_rate": 0
+          },
+          "normal_polling": {
+            "TP": 0,
+            "TN": 200,
+            "FP": 0,
+            "FN": 0,
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "false_positive_rate": 0.0
+          },
+          "outside_maintenance_window": {
+            "TP": 0,
+            "TN": 0,
+            "FP": 0,
+            "FN": 10,
+            "precision": 0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "false_positive_rate": 0
+          },
+          "outside_register_scope": {
+            "TP": 0,
+            "TN": 0,
+            "FP": 0,
+            "FN": 10,
+            "precision": 0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "false_positive_rate": 0
+          },
+          "replayed_over_budget": {
+            "TP": 0,
+            "TN": 0,
+            "FP": 0,
+            "FN": 10,
+            "precision": 0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "false_positive_rate": 0
+          },
+          "unauthorized_source": {
+            "TP": 20,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "false_positive_rate": 0
+          },
+          "unsafe_value": {
+            "TP": 0,
+            "TN": 0,
+            "FP": 0,
+            "FN": 10,
+            "precision": 0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "false_positive_rate": 0
+          },
+          "wrong_unit": {
+            "TP": 0,
+            "TN": 0,
+            "FP": 0,
+            "FN": 10,
+            "precision": 0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "false_positive_rate": 0
+          }
+        }
+      },
+      "bounded": {
+        "metrics": {
+          "TP": 80,
+          "TN": 260,
+          "FP": 0,
+          "FN": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "false_positive_rate": 0.0
+        },
+        "raw_alert_rows": 80,
+        "suppressed_candidates": 60,
+        "processing_ms": {
+          "p50": 0.0029,
+          "p95": 0.0081,
+          "p99": 0.0213
+        },
+        "wall_seconds_including_parser_and_startup": 0.614193300018087,
+        "scenarios": {
+          "approved_maintenance": {
+            "TP": 0,
+            "TN": 60,
+            "FP": 0,
+            "FN": 0,
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "false_positive_rate": 0.0
+          },
+          "lab_ioc_source": {
+            "TP": 10,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "false_positive_rate": 0
+          },
+          "normal_polling": {
+            "TP": 0,
+            "TN": 200,
+            "FP": 0,
+            "FN": 0,
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "false_positive_rate": 0.0
+          },
+          "outside_maintenance_window": {
+            "TP": 10,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "false_positive_rate": 0
+          },
+          "outside_register_scope": {
+            "TP": 10,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "false_positive_rate": 0
+          },
+          "replayed_over_budget": {
+            "TP": 10,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "false_positive_rate": 0
+          },
+          "unauthorized_source": {
+            "TP": 20,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "false_positive_rate": 0
+          },
+          "unsafe_value": {
+            "TP": 10,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "false_positive_rate": 0
+          },
+          "wrong_unit": {
+            "TP": 10,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "false_positive_rate": 0
+          }
+        }
+      },
+      "bounded-host": {
+        "metrics": {
+          "TP": 80,
+          "TN": 206,
+          "FP": 54,
+          "FN": 0,
+          "precision": 0.5970149253731343,
+          "recall": 1.0,
+          "f1": 0.7476635514018691,
+          "false_positive_rate": 0.2076923076923077
+        },
+        "raw_alert_rows": 134,
+        "suppressed_candidates": 6,
+        "processing_ms": {
+          "p50": 0.0027,
+          "p95": 0.0083,
+          "p99": 0.0225
+        },
+        "wall_seconds_including_parser_and_startup": 0.585634500021115,
+        "scenarios": {
+          "approved_maintenance": {
+            "TP": 0,
+            "TN": 6,
+            "FP": 54,
+            "FN": 0,
+            "precision": 0.0,
+            "recall": 0,
+            "f1": 0.0,
+            "false_positive_rate": 0.9
+          },
+          "lab_ioc_source": {
+            "TP": 10,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "false_positive_rate": 0
+          },
+          "normal_polling": {
+            "TP": 0,
+            "TN": 200,
+            "FP": 0,
+            "FN": 0,
+            "precision": 0,
+            "recall": 0,
+            "f1": 0,
+            "false_positive_rate": 0.0
+          },
+          "outside_maintenance_window": {
+            "TP": 10,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "false_positive_rate": 0
+          },
+          "outside_register_scope": {
+            "TP": 10,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "false_positive_rate": 0
+          },
+          "replayed_over_budget": {
+            "TP": 10,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "false_positive_rate": 0
+          },
+          "unauthorized_source": {
+            "TP": 20,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "false_positive_rate": 0
+          },
+          "unsafe_value": {
+            "TP": 10,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "false_positive_rate": 0
+          },
+          "wrong_unit": {
+            "TP": 10,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "false_positive_rate": 0
+          }
+        }
+      }
+    },
+    "challenge": {
+      "baseline": {
+        "metrics": {
+          "TP": 5,
+          "TN": 0,
+          "FP": 0,
+          "FN": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "false_positive_rate": 0
+        },
+        "raw_alert_rows": 5,
+        "suppressed_candidates": 0,
+        "processing_ms": {
+          "p50": 0.0053,
+          "p95": 0.0964,
+          "p99": 0.0964
+        },
+        "wall_seconds_including_parser_and_startup": 0.5581363000092097,
+        "scenarios": {
+          "approved_looking_compromised_endpoint": {
+            "TP": 5,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "false_positive_rate": 0
+          }
+        }
+      },
+      "peer-only": {
+        "metrics": {
+          "TP": 0,
+          "TN": 0,
+          "FP": 0,
+          "FN": 5,
+          "precision": 0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "false_positive_rate": 0
+        },
+        "raw_alert_rows": 0,
+        "suppressed_candidates": 5,
+        "processing_ms": {
+          "p50": 0.0043,
+          "p95": 0.0292,
+          "p99": 0.0292
+        },
+        "wall_seconds_including_parser_and_startup": 0.5785775000113063,
+        "scenarios": {
+          "approved_looking_compromised_endpoint": {
+            "TP": 0,
+            "TN": 0,
+            "FP": 0,
+            "FN": 5,
+            "precision": 0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "false_positive_rate": 0
+          }
+        }
+      },
+      "bounded": {
+        "metrics": {
+          "TP": 0,
+          "TN": 0,
+          "FP": 0,
+          "FN": 5,
+          "precision": 0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "false_positive_rate": 0
+        },
+        "raw_alert_rows": 0,
+        "suppressed_candidates": 5,
+        "processing_ms": {
+          "p50": 0.0047,
+          "p95": 0.0324,
+          "p99": 0.0324
+        },
+        "wall_seconds_including_parser_and_startup": 0.5796658999752253,
+        "scenarios": {
+          "approved_looking_compromised_endpoint": {
+            "TP": 0,
+            "TN": 0,
+            "FP": 0,
+            "FN": 5,
+            "precision": 0,
+            "recall": 0.0,
+            "f1": 0.0,
+            "false_positive_rate": 0
+          }
+        }
+      },
+      "bounded-host": {
+        "metrics": {
+          "TP": 5,
+          "TN": 0,
+          "FP": 0,
+          "FN": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "false_positive_rate": 0
+        },
+        "raw_alert_rows": 5,
+        "suppressed_candidates": 0,
+        "processing_ms": {
+          "p50": 0.0094,
+          "p95": 0.0761,
+          "p99": 0.0761
+        },
+        "wall_seconds_including_parser_and_startup": 0.5532558999839239,
+        "scenarios": {
+          "approved_looking_compromised_endpoint": {
+            "TP": 5,
+            "TN": 0,
+            "FP": 0,
+            "FN": 0,
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "false_positive_rate": 0
+          }
+        }
+      }
+    }
+  },
+  "pcap_sha256": {
+    "main": "cdb642c3e58ff4ffaf6bfab6e0d514171e5e43e87dbbf26cbeee3edd0739c002",
+    "challenge": "212ff4fb714884abd04fba0e7e8ce16f57cab372a6af5a9ba992aeba1dd4df17"
+  },
+  "siem_verification": {
+    "total": 394,
+    "variants": [
+      {
+        "key": "baseline",
+        "doc_count": 145
+      },
+      {
+        "key": "bounded-host",
+        "doc_count": 139
+      },
+      {
+        "key": "bounded",
+        "doc_count": 80
+      },
+      {
+        "key": "peer-only",
+        "doc_count": 30
+      }
+    ],
+    "native_security_alerts": 80,
+    "investigation_query_counts": {
+      "engineering_baseline": 115,
+      "retained_contextual": 80,
+      "unknown_source": 80,
+      "dangerous_values": 30,
+      "counterexample": 10,
+      "host_correlation": 109
+    },
+    "kibana": "available"
+  }
+}

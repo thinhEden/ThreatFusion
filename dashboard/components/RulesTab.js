@@ -1,12 +1,20 @@
 // Detection Rules Registry Component
 function RenderRulesTab() {
-  const [selectedRule, setSelectedRule] = React.useState(window.staticRules ? window.staticRules[0] : null);
+  const [rules, setRules] = React.useState([]);
+  const [selectedRule, setSelectedRule] = React.useState(null);
+  React.useEffect(() => {
+    let cancelled = false;
+    fetch('/api/rules').then(res => res.json()).then(rows => {
+      if (!cancelled) { setRules(rows); setSelectedRule(rows[0] || null); }
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-bold text-white">Detection Rules Registry</h2>
-        <p className="text-xs text-siemMuted">Signature-based rules and machine learning baselines compiled in the detection engine</p>
+        <p className="text-xs text-siemMuted">Configured rule files</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -22,7 +30,7 @@ function RenderRulesTab() {
               </tr>
             </thead>
             <tbody>
-              {window.staticRules && window.staticRules.map(r => (
+              {rules.map(r => (
                 <tr 
                   key={r.id} 
                   onClick={() => setSelectedRule(r)}

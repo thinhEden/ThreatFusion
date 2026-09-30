@@ -1,0 +1,61 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const root = path.resolve(__dirname, '..');
+const folder = path.resolve(root, process.env.DEMO_OUTPUT || 'out/portfolio_demo');
+const env = Object.fromEntries(fs.readFileSync(path.join(root, 'siem/elastic/.env'), 'utf8').trim().split(/\r?\n/).map(l => l.split('=')));
+const kibana = process.env.KIBANA_URL || 'http://127.0.0.1:15601';
+const evidence = process.env.EVIDENCE_URL || 'http://127.0.0.1:8020';
+const absoluteTime = "(time:(from:'2026-09-30T09:58:00.000Z',to:'2026-09-30T10:15:00.000Z'))";
+
+(async () => {
+  const browser = await chromium.launch({ headless: true, channel: process.env.BROWSER_CHANNEL || undefined });
+  try {
+    const auth = await browser.newContext();
+    const login = await auth.newPage();
+    await login.goto(kibana + '/login', { waitUntil: 'domcontentloaded' });
+    await login.getByLabel('Username', { exact: true }).fill('elastic');
+    await login.getByLabel('Password', { exact: true }).fill(env.ELASTIC_PASSWORD);
+    await login.getByRole('button', { name: 'Log in', exact: true }).click();
+    await login.waitForURL(url => !url.pathname.includes('/login'), { timeout: 60000 });
+    const state = await auth.storageState();
+    await auth.close();
+    const context = await browser.newContext({ storageState: state, viewport: { width: 1280, height: 800 },
+      recordVideo: { dir: path.join(folder, 'recording'), size: { width: 1280, height: 800 } } });
+    const page = await context.newPage();
+    const video = page.video();
+    const chapters = [];
+    const start = Date.now();
+    const chapter = title => chapters.push({ title, seconds: (Date.now() - start) / 1000 });
+    chapter('Paired experiment and honest challenge result');
+    await page.goto(evidence);
+    await page.getByRole('heading', { name: 'ThreatFusion OT Investigation' }).waitFor();
+    await page.waitForTimeout(7000);
+    await page.screenshot({ path: path.join(folder, 'experiment.png'), fullPage: true });
+    chapter('Packet evidence, ticket constraints, analyst disposition');
+    await page.goto(evidence + '/case_study.html');
+    await page.getByRole('heading', { name: 'OT Investigation Evidence' }).waitFor();
+    await page.waitForTimeout(8000);
+    await page.screenshot({ path: path.join(folder, 'case_evidence.png'), fullPage: true });
+    chapter('Actual Elastic Discover investigation query');
+    await page.goto(kibana + '/app/discover#/view/tf-retained-threats?_g=' + encodeURIComponent(absoluteTime));
+    await page.waitForTimeout(12000);
+    const body = await page.locator('body').innerText();
+    if (!body.includes('TF - Retained contextual alerts')) throw new Error('Saved investigation did not render');
+    await page.screenshot({ path: path.join(folder, 'elastic_discover.png'), fullPage: true });
+    chapter('False-positive investigation pivot');
+    await page.goto(kibana + '/app/discover#/view/tf-maintenance-baseline?_g=' + encodeURIComponent(absoluteTime));
+    await page.waitForTimeout(8000);
+    await page.screenshot({ path: path.join(folder, 'elastic_engineering.png'), fullPage: true });
+    chapter('Native Elastic Security Alerts');
+    const day = "(time:(from:'2026-09-30T00:00:00.000Z',to:'2026-10-01T00:00:00.000Z'))";
+    await page.goto(kibana + '/app/security/alerts?_g=' + encodeURIComponent(day));
+    await page.getByText('ThreatFusion - Retained OT command alerts', { exact: false }).first().waitFor({ timeout: 60000 });
+    await page.waitForTimeout(5000);
+    await page.screenshot({ path: path.join(folder, 'elastic_security_alerts.png'), fullPage: true });
+    await context.close();
+    await video.saveAs(path.join(folder, 'portfolio_demo.webm'));
+    fs.writeFileSync(path.join(folder, 'video_chapters.json'), JSON.stringify(chapters, null, 2));
+    console.log('Video saved: ' + path.join(folder, 'portfolio_demo.webm'));
+  } finally { await browser.close(); }
+})().catch(error => { console.error(error.message); process.exitCode = 1; });

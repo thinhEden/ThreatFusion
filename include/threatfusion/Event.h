@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -24,6 +25,13 @@ struct Event {
     // These are normalized to [0,1] by the dataset normalizer and appended
     // to the LSTM feature vector for richer anomaly detection.
     std::vector<double> extraFeatures;
+    int unitId = -1;
+    int registerAddress = -1;
+    int registerCount = -1;
+    std::vector<int> registerValues;
+    bool isRequest = false;
+    // Named process parameters decoded from a command or response (e.g. setpoint, pump).
+    std::map<std::string, double> processValues;
 };
 
 } // namespace threatfusion

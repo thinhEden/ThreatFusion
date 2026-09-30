@@ -5,6 +5,8 @@
 #include <functional>
 #include <thread>
 #include <atomic>
+#include <mutex>
+#include <cstdint>
 
 namespace threatfusion {
 
@@ -17,15 +19,14 @@ public:
     void stop();
 
 private:
-    void listenLoop(int port, std::function<void(const Event&)> callback);
+    void listenLoop(std::function<void(const Event&)> callback);
     
     std::thread listenerThread_;
     std::atomic<bool> running_;
-#ifdef _WIN32
-    unsigned __int64 serverSocket_;
-#else
-    int serverSocket_;
-#endif
+    std::mutex socketMutex_;
+    std::intptr_t serverSocket_ = -1;
+    std::intptr_t clientSocket_ = -1;
+    bool networkInitialized_ = false;
 };
 
 } // namespace threatfusion

@@ -1,0 +1,14 @@
+{
+  "name": "SWaT.A1 (Dec 2015) via Kaggle mirror",
+  "normal": "D:/normal.csv",
+  "attack": "D:/attack.csv",
+  "merged": "D:/merged.csv",
+  "kaggle_url": "https://www.kaggle.com/datasets/vishala28/swat-dataset-secure-water-treatment-system",
+  "kaggle_owner": "Vishal Agrawal (vishala28)",
+  "kaggle_declared_license": "CC0: Public Domain",
+  "kaggle_file_bytes": {"attack.csv": 15162438, "normal.csv": 402374633, "merged.csv": 426855390},
+  "original_source": "https://www.sutd.edu.sg/itrust/itrust-labs/datasets/",
+  "provenance": "Kaggle API file sizes match local attack.csv and normal.csv (checked 2026-09-30 / 2026-06-10); Kaggle publishes no checksum",
+  "schema": "51 sensor/actuator measurements, Timestamp, Normal/Attack",
+  "note": "normal.csv = Normal v0 + Normal v1 (duplicate seconds) + Normal-labelled attack-period rows and starts at 28/12/2015 10:00:00; attack.csv holds only Attack rows. merged.csv contains every row of both, so it is the only file a benchmark needs. Deduplicate by timestamp and split by time, not by row offset."
+}

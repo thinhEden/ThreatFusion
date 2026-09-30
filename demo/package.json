@@ -1,0 +1,6 @@
+{
+  "name": "threatfusion-portfolio-recorder",
+  "private": true,
+  "scripts": {"record": "node record_portfolio.cjs"},
+  "devDependencies": {"playwright": "1.51.1"}
+}

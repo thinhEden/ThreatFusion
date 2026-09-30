@@ -1,0 +1,556 @@
+{
+  "source": {
+    "page": "https://sites.google.com/a/uah.edu/tommy-morris-uah/ics-data-sets",
+    "entry": "Dataset 2: Gas Pipeline Datasets (ORNL formatted, Modbus RTU feature sets V2)",
+    "archive": "http://www.ece.uah.edu/~thm0009/icsdatasets/ModbusRTUfeatureSetsV2.zip",
+    "citation": "Beaver, Borges-Hink, Buckner, \"An Evaluation of Machine Learning Methods to Detect Malicious SCADA Communications,\" ICMLA 2013, vol. 2, pp. 54-59, doi:10.1109/ICMLA.2013.105"
+  },
+  "files": [
+    {
+      "file": "Command Injection Scrubbed V2/AddressScanScrubbedV2.csv",
+      "bytes": 3802630,
+      "sha256": "6fe1437daae66ec62720f1990111b07f124eb791aa1c0c15f184724f1a4fe62c",
+      "line_ending": "LF",
+      "rows": 28088,
+      "labels": {
+        "Good": 28086,
+        "Bad": 2
+      },
+      "attack_rows_contiguous_at_end": true,
+      "benign_rows_before_attacks": 28086,
+      "exact_duplicate_rows_pct": 98.93,
+      "direction_benign": {
+        "Command": 28083,
+        "X": 3
+      },
+      "direction_attack": {
+        "Command": 1,
+        "X": 1
+      },
+      "attack_rows_with_value_unseen_in_benign": {
+        "Address": 1.0,
+        "CRC": 0.5,
+        "DataLength": 0.5,
+        "SetPoint": 0.5,
+        "TimeInterval": 0.5,
+        "deltaSetPoint": 0.5
+      }
+    },
+    {
+      "file": "Command Injection Scrubbed V2/FunctionCodeScanScrubbedV2.csv",
+      "bytes": 3803352,
+      "sha256": "16a9aeb590fb08f35abca3118db9cc4aadcbf3e3ce5a0d41543fdbbd617331cd",
+      "line_ending": "LF",
+      "rows": 28095,
+      "labels": {
+        "Good": 28086,
+        "Bad": 9
+      },
+      "attack_rows_contiguous_at_end": true,
+      "benign_rows_before_attacks": 28086,
+      "exact_duplicate_rows_pct": 98.91,
+      "direction_benign": {
+        "Command": 28083,
+        "X": 3
+      },
+      "direction_attack": {
+        "X": 9
+      },
+      "attack_rows_with_value_unseen_in_benign": {
+        "CRC": 1.0,
+        "FunctionCode": 1.0,
+        "TimeInterval": 0.8889
+      }
+    },
+    {
+      "file": "Command Injection Scrubbed V2/IllegalSetpointScrubbedV2.csv",
+      "bytes": 3830923,
+      "sha256": "4d364121d4d73be9b96d1687b280100596021ea1709912a84c5ce061f379bd14",
+      "line_ending": "LF",
+      "rows": 28284,
+      "labels": {
+        "Good": 28086,
+        "Bad": 198
+      },
+      "attack_rows_contiguous_at_end": true,
+      "benign_rows_before_attacks": 28086,
+      "exact_duplicate_rows_pct": 98.91,
+      "direction_benign": {
+        "Command": 28083,
+        "X": 3
+      },
+      "direction_attack": {
+        "Command": 197,
+        "X": 1
+      },
+      "attack_rows_with_value_unseen_in_benign": {
+        "CRC": 1.0,
+        "SetPoint": 0.9949,
+        "TimeInterval": 0.9949
+      }
+    },
+    {
+      "file": "Command Injection Scrubbed V2/PIDmodificationScrubbedV2.csv",
+      "bytes": 3809675,
+      "sha256": "373ac74a8a94be155a4b6c6ae9eda3176d2734c34e71dd91748a0f4e7a04de6b",
+      "line_ending": "LF",
+      "rows": 28135,
+      "labels": {
+        "Good": 28086,
+        "Bad": 49
+      },
+      "attack_rows_contiguous_at_end": true,
+      "benign_rows_before_attacks": 28086,
+      "exact_duplicate_rows_pct": 98.82,
+      "direction_benign": {
+        "Command": 28083,
+        "X": 3
+      },
+      "direction_attack": {
+        "Command": 49
+      },
+      "attack_rows_with_value_unseen_in_benign": {
+        "CRC": 1.0,
+        "SetPoint": 1.0,
+        "TimeInterval": 0.9796
+      }
+    },
+    {
+      "file": "DoS Data FeatureSet/modbusRTU_DoSResponseInjectionV2.csv",
+      "bytes": 3581617,
+      "sha256": "71c94f80c1a0e122dd59f33251a945da3f20dc3978f0f4317f94bbf0ab48ede9",
+      "line_ending": "LF",
+      "rows": 28943,
+      "labels": {
+        "Good": 28070,
+        "Bad": 873
+      },
+      "attack_rows_contiguous_at_end": true,
+      "benign_rows_before_attacks": 28070,
+      "exact_duplicate_rows_pct": 31.49,
+      "direction_benign": {
+        "Response": 28070
+      },
+      "direction_attack": {
+        "X": 873
+      },
+      "attack_rows_with_value_unseen_in_benign": {
+        "Address": 0.9943,
+        "CommandResponse": 1.0,
+        "CRC": 0.9943,
+        "DataLength": 1.0,
+        "FunctionCode": 0.992,
+        "InvalidDataLength": 1.0,
+        "InvalidFunctionCode": 0.9885,
+        "TimeInterval": 0.9989
+      }
+    },
+    {
+      "file": "Multiclass FeatureSets/MulticlasCommandInjectionV2.csv",
+      "bytes": 3133513,
+      "sha256": "2e57e4a6cf7a91c471e529269e39487911b2104db46bcad4dff2733997f5d7b8",
+      "line_ending": "CR",
+      "rows": 28344,
+      "labels": {
+        "Good": 28086,
+        "AddressScan": 2,
+        "FunctionCodeScan": 9,
+        "IllegalSetpoint": 198,
+        "PIDmodification": 49
+      },
+      "attack_rows_contiguous_at_end": true,
+      "benign_rows_before_attacks": 28086,
+      "exact_duplicate_rows_pct": 98.76,
+      "direction_benign": {
+        "Command": 28083,
+        "X": 3
+      },
+      "direction_attack": {
+        "Command": 247,
+        "X": 11
+      },
+      "attack_rows_with_value_unseen_in_benign": {
+        "CRC": 0.9961,
+        "SetPoint": 0.9574,
+        "TimeInterval": 0.9845
+      }
+    },
+    {
+      "file": "Multiclass FeatureSets/MulticlassResponseInjectionV2.csv",
+      "bytes": 2901677,
+      "sha256": "aabfca41c45cc3e205684855ab3618b3277da8cfba20a5e5273b87a6cefb2a08",
+      "line_ending": "CR",
+      "rows": 29309,
+      "labels": {
+        "Good": 28070,
+        "Burst": 217,
+        "Fast": 225,
+        "Negative": 119,
+        "Setpoint": 171,
+        "Single": 33,
+        "Slow": 306,
+        "Wave": 168
+      },
+      "attack_rows_contiguous_at_end": true,
+      "benign_rows_before_attacks": 28070,
+      "exact_duplicate_rows_pct": 30.71,
+      "direction_benign": {
+        "Response": 28070
+      },
+      "direction_attack": {
+        "Response": 1234,
+        "X": 5
+      },
+      "attack_rows_with_value_unseen_in_benign": {
+        "PipelinePSI": 0.5553,
+        "TimeInterval": 0.9645,
+        "deltaPipelinePSI": 0.5609
+      }
+    },
+    {
+      "file": "Response Injection Scrubbed V2/ScrubbedBurstV2/scrubbedBurstV2.csv",
+      "bytes": 3499218,
+      "sha256": "0a754d9d879c52966cd7fb995352733eaae7aae1d948622ab66e6c4113ed781b",
+      "line_ending": "LF",
+      "rows": 28287,
+      "labels": {
+        "Good": 28070,
+        "Bad": 217
+      },
+      "attack_rows_contiguous_at_end": true,
+      "benign_rows_before_attacks": 28070,
+      "exact_duplicate_rows_pct": 30.09,
+      "direction_benign": {
+        "Response": 28070
+      },
+      "direction_attack": {
+        "Response": 215,
+        "X": 2
+      },
+      "attack_rows_with_value_unseen_in_benign": {
+        "TimeInterval": 0.9631
+      }
+    },
+    {
+      "file": "Response Injection Scrubbed V2/ScrubbedFastV2/scrubbedFastV2.csv",
+      "bytes": 3501472,
+      "sha256": "f450e5cd6d10f4c65cdc5ca128854385f10eefa3d827738d6ede56b835104884",
+      "line_ending": "LF",
+      "rows": 28295,
+      "labels": {
+        "Good": 28070,
+        "Bad": 225
+      },
+      "attack_rows_contiguous_at_end": true,
+      "benign_rows_before_attacks": 28070,
+      "exact_duplicate_rows_pct": 29.98,
+      "direction_benign": {
+        "Response": 28070
+      },
+      "direction_attack": {
+        "Response": 224,
+        "X": 1
+      },
+      "attack_rows_with_value_unseen_in_benign": {
+        "PipelinePSI": 0.5022,
+        "TimeInterval": 0.9644,
+        "deltaPipelinePSI": 0.9867
+      }
+    },
+    {
+      "file": "Response Injection Scrubbed V2/ScrubbedNegativeV2/scrubbedNegativeV2.csv",
+      "bytes": 3487834,
+      "sha256": "317b8fae7818237547da22ccaa6501794c46da29b20c8d39ff78189bc7a0c09d",
+      "line_ending": "LF",
+      "rows": 28189,
+      "labels": {
+        "Good": 28070,
+        "Bad": 119
+      },
+      "attack_rows_contiguous_at_end": true,
+      "benign_rows_before_attacks": 28070,
+      "exact_duplicate_rows_pct": 29.87,
+      "direction_benign": {
+        "Response": 28070
+      },
+      "direction_attack": {
+        "Response": 119
+      },
+      "attack_rows_with_value_unseen_in_benign": {
+        "PipelinePSI": 1.0,
+        "TimeInterval": 0.9496
+      }
+    },
+    {
+      "file": "Response Injection Scrubbed V2/ScrubbedSetpointV2/scrubbedSetpointV2.csv",
+      "bytes": 3493574,
+      "sha256": "4233dc6e322d799e4b7141b2b000b9c95cbeb28af49b9fbb69d4c71100c8feaa",
+      "line_ending": "LF",
+      "rows": 28241,
+      "labels": {
+        "Good": 28070,
+        "Bad": 171
+      },
+      "attack_rows_contiguous_at_end": true,
+      "benign_rows_before_attacks": 28070,
+      "exact_duplicate_rows_pct": 30.07,
+      "direction_benign": {
+        "Response": 28070
+      },
+      "direction_attack": {
+        "Response": 171
+      },
+      "attack_rows_with_value_unseen_in_benign": {
+        "TimeInterval": 0.9942
+      }
+    },
+    {
+      "file": "Response Injection Scrubbed V2/ScrubbedSingleV2/scrubbedSingleV2.csv",
+      "bytes": 3476073,
+      "sha256": "4741db86edc171de264d69ed5e9fd3df68e529de3a705126d0203526ba3cf382",
+      "line_ending": "LF",
+      "rows": 28103,
+      "labels": {
+        "Good": 28070,
+        "Bad": 33
+      },
+      "attack_rows_contiguous_at_end": true,
+      "benign_rows_before_attacks": 28070,
+      "exact_duplicate_rows_pct": 29.8,
+      "direction_benign": {
+        "Response": 28070
+      },
+      "direction_attack": {
+        "Response": 33
+      },
+      "attack_rows_with_value_unseen_in_benign": {
+        "PipelinePSI": 1.0,
+        "TimeInterval": 0.9697
+      }
+    },
+    {
+      "file": "Response Injection Scrubbed V2/ScrubbedSlowV2/scrubbedSlowV2.csv",
+      "bytes": 3512049,
+      "sha256": "72fbd0ddf46c42bea1f612a2dc7477c881a8154f9d29d95a3c9b5e521821298e",
+      "line_ending": "LF",
+      "rows": 28376,
+      "labels": {
+        "Good": 28070,
+        "Bad": 306
+      },
+      "attack_rows_contiguous_at_end": true,
+      "benign_rows_before_attacks": 28070,
+      "exact_duplicate_rows_pct": 29.93,
+      "direction_benign": {
+        "Response": 28070
+      },
+      "direction_attack": {
+        "Response": 304,
+        "X": 2
+      },
+      "attack_rows_with_value_unseen_in_benign": {
+        "PipelinePSI": 0.8333,
+        "TimeInterval": 0.9542,
+        "deltaPipelinePSI": 0.9902
+      }
+    },
+    {
+      "file": "Response Injection Scrubbed V2/ScrubbedWaveV2/scrubbedWaveV2.csv",
+      "bytes": 3493591,
+      "sha256": "c84ef922b70413d74f2f7a3a35f35d30104a0f6d51b9b4287b6fec29b8b1f10c",
+      "line_ending": "LF",
+      "rows": 28238,
+      "labels": {
+        "Good": 28070,
+        "Bad": 168
+      },
+      "attack_rows_contiguous_at_end": true,
+      "benign_rows_before_attacks": 28070,
+      "exact_duplicate_rows_pct": 29.77,
+      "direction_benign": {
+        "Response": 28070
+      },
+      "direction_attack": {
+        "Response": 168
+      },
+      "attack_rows_with_value_unseen_in_benign": {
+        "PipelinePSI": 1.0,
+        "TimeInterval": 0.9643,
+        "deltaPipelinePSI": 0.994
+      }
+    }
+  ],
+  "benchmark_cases": {
+    "command": {
+      "malicious_per_split": {
+        "train": 0,
+        "validation": 0,
+        "test": 258
+      },
+      "unique_train_vectors": 153,
+      "train_rows": 17006,
+      "test_benign_vectors_seen_in_train_pct": 99.87,
+      "test_malicious_vectors_seen_in_train_pct": 0.0,
+      "timeinterval_rule": {
+        "TP": 258,
+        "TN": 5410,
+        "FP": 1,
+        "FN": 0,
+        "precision": 0.9961389961389961,
+        "recall": 1.0,
+        "f1": 0.9980657640232108,
+        "accuracy": 0.9998236020462162,
+        "false_positive_rate": 0.00018480872297172427
+      },
+      "isolation_forest_ablation": {
+        "all_features": {
+          "f1_mean": 0.9433,
+          "f1_std": 0.0
+        },
+        "without_TimeInterval": {
+          "f1_mean": 1.0,
+          "f1_std": 0.0
+        },
+        "TimeInterval_only": {
+          "f1_mean": 0.9056,
+          "f1_std": 0.0365
+        }
+      }
+    },
+    "response": {
+      "malicious_per_split": {
+        "train": 0,
+        "validation": 0,
+        "test": 1239
+      },
+      "unique_train_vectors": 7635,
+      "train_rows": 17585,
+      "test_benign_vectors_seen_in_train_pct": 60.83,
+      "test_malicious_vectors_seen_in_train_pct": 0.0,
+      "timeinterval_rule": {
+        "TP": 1237,
+        "TN": 4583,
+        "FP": 40,
+        "FN": 2,
+        "precision": 0.9686765857478465,
+        "recall": 0.9983857949959645,
+        "f1": 0.9833068362480127,
+        "accuracy": 0.9928352098259979,
+        "false_positive_rate": 0.008652390222799048
+      },
+      "isolation_forest_ablation": {
+        "all_features": {
+          "f1_mean": 0.8915,
+          "f1_std": 0.0025
+        },
+        "without_TimeInterval": {
+          "f1_mean": 0.6517,
+          "f1_std": 0.1617
+        },
+        "TimeInterval_only": {
+          "f1_mean": 0.9809,
+          "f1_std": 0.0012
+        }
+      }
+    },
+    "dos": {
+      "malicious_per_split": {
+        "train": 0,
+        "validation": 0,
+        "test": 873
+      },
+      "unique_train_vectors": 7558,
+      "train_rows": 17365,
+      "test_benign_vectors_seen_in_train_pct": 60.74,
+      "test_malicious_vectors_seen_in_train_pct": 0.0,
+      "timeinterval_rule": {
+        "TP": 873,
+        "TN": 4875,
+        "FP": 41,
+        "FN": 0,
+        "precision": 0.9551422319474836,
+        "recall": 1.0,
+        "f1": 0.9770565193060996,
+        "accuracy": 0.9929176023492832,
+        "false_positive_rate": 0.008340113913751017
+      },
+      "isolation_forest_ablation": {
+        "all_features": {
+          "f1_mean": 0.9147,
+          "f1_std": 0.0037
+        },
+        "without_TimeInterval": {
+          "f1_mean": 0.9277,
+          "f1_std": 0.0025
+        },
+        "TimeInterval_only": {
+          "f1_mean": 0.9776,
+          "f1_std": 0.0023
+        }
+      }
+    }
+  },
+  "official_archive": {
+    "archive_bytes": 2162663,
+    "archive_sha256": "11534aa54e8d70c9279307413ccbfc4afdfba163eade9af918c4e2a04dddab4a",
+    "files": {
+      "Command Injection Scrubbed V2/AddressScanScrubbedV2.csv": {
+        "status": "identical",
+        "official_sha256": "6fe1437daae66ec62720f1990111b07f124eb791aa1c0c15f184724f1a4fe62c"
+      },
+      "Command Injection Scrubbed V2/FunctionCodeScanScrubbedV2.csv": {
+        "status": "identical",
+        "official_sha256": "16a9aeb590fb08f35abca3118db9cc4aadcbf3e3ce5a0d41543fdbbd617331cd"
+      },
+      "Command Injection Scrubbed V2/IllegalSetpointScrubbedV2.csv": {
+        "status": "identical",
+        "official_sha256": "4d364121d4d73be9b96d1687b280100596021ea1709912a84c5ce061f379bd14"
+      },
+      "Command Injection Scrubbed V2/PIDmodificationScrubbedV2.csv": {
+        "status": "identical",
+        "official_sha256": "373ac74a8a94be155a4b6c6ae9eda3176d2734c34e71dd91748a0f4e7a04de6b"
+      },
+      "DoS Data FeatureSet/modbusRTU_DoSResponseInjectionV2.csv": {
+        "status": "identical",
+        "official_sha256": "71c94f80c1a0e122dd59f33251a945da3f20dc3978f0f4317f94bbf0ab48ede9"
+      },
+      "Multiclass FeatureSets/MulticlasCommandInjectionV2.csv": {
+        "status": "identical",
+        "official_sha256": "2e57e4a6cf7a91c471e529269e39487911b2104db46bcad4dff2733997f5d7b8"
+      },
+      "Multiclass FeatureSets/MulticlassResponseInjectionV2.csv": {
+        "status": "identical",
+        "official_sha256": "aabfca41c45cc3e205684855ab3618b3277da8cfba20a5e5273b87a6cefb2a08"
+      },
+      "Response Injection Scrubbed V2/ScrubbedBurstV2/scrubbedBurstV2.csv": {
+        "status": "identical",
+        "official_sha256": "0a754d9d879c52966cd7fb995352733eaae7aae1d948622ab66e6c4113ed781b"
+      },
+      "Response Injection Scrubbed V2/ScrubbedFastV2/scrubbedFastV2.csv": {
+        "status": "identical",
+        "official_sha256": "f450e5cd6d10f4c65cdc5ca128854385f10eefa3d827738d6ede56b835104884"
+      },
+      "Response Injection Scrubbed V2/ScrubbedNegativeV2/scrubbedNegativeV2.csv": {
+        "status": "identical",
+        "official_sha256": "317b8fae7818237547da22ccaa6501794c46da29b20c8d39ff78189bc7a0c09d"
+      },
+      "Response Injection Scrubbed V2/ScrubbedSetpointV2/scrubbedSetpointV2.csv": {
+        "status": "identical",
+        "official_sha256": "4233dc6e322d799e4b7141b2b000b9c95cbeb28af49b9fbb69d4c71100c8feaa"
+      },
+      "Response Injection Scrubbed V2/ScrubbedSingleV2/scrubbedSingleV2.csv": {
+        "status": "identical",
+        "official_sha256": "4741db86edc171de264d69ed5e9fd3df68e529de3a705126d0203526ba3cf382"
+      },
+      "Response Injection Scrubbed V2/ScrubbedSlowV2/scrubbedSlowV2.csv": {
+        "status": "identical",
+        "official_sha256": "72fbd0ddf46c42bea1f612a2dc7477c881a8154f9d29d95a3c9b5e521821298e"
+      },
+      "Response Injection Scrubbed V2/ScrubbedWaveV2/scrubbedWaveV2.csv": {
+        "status": "identical",
+        "official_sha256": "c84ef922b70413d74f2f7a3a35f35d30104a0f6d51b9b4287b6fec29b8b1f10c"
+      }
+    },
+    "extra_local_files": []
+  }
+}
