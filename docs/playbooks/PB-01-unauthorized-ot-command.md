@@ -20,6 +20,7 @@
 | `State change retained for review` | Retained: a valid value, but the state changed | Confirm with the operator log (section 2) |
 | `Authorization constraints not satisfied` / `Authorization command budget exhausted` | Retained: ticket window, register, value or quota violated | Escalate to L2 |
 | `Independent security evidence retained` | Retained: an IOC, Suricata hit or anomaly corroborates the write | Treat as a probable true positive |
+| `Host alert <rule> on <ip> at <time>; context suppression disabled` | Retained with HOST-OT-001: the source host raised a Windows detection in the lookback window | Probable true positive; open PB-03 for the host |
 
 3. **Limit:** the context cannot see intent. Commands from a compromised but authorized workstation pass the envelope. This happened for every MSCI attack on the public dataset, and for the lab challenge capture. If a host alert exists for the source workstation, treat a suppressed write as suspicious and open PB-03.
 

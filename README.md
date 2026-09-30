@@ -104,7 +104,7 @@ g++ -std=c++17 -I include src/*.cpp -o build/threatfusion.exe -lws2_32
 .venv/Scripts/python.exe tools/portfolio_demo.py --engine build-libtorch/Release/threatfusion.exe --siem
 ```
 
-This command generates offline Modbus PCAP evidence, runs C++ baseline / peer-only / bounded-context ablations, produces an analyst case study, and ingests ECS alerts into an authenticated local Elastic Security stack. The main exercise removes 60 maintenance false positives while retaining 80 explicit violations. A separate compromised-endpoint challenge exposes five contextual misses: combined Recall is 94.12%. These are controlled rule-policy results, independent of the MSU ML benchmark.
+This command generates offline Modbus PCAP evidence, runs C++ baseline / peer-only / bounded-context ablations, produces an analyst case study, and ingests ECS alerts into an authenticated local Elastic Security stack. The main exercise removes 60 maintenance false positives while retaining 80 explicit violations. A separate compromised-endpoint challenge exposes five contextual misses: combined Recall is 94.12%. A constructed host-evidence variant replays a real Windows detection (WIN-001) on the engineering workstation. The engine then correlates it with that host's later OT commands (`--host-alerts`, HOST-OT-001). This retains all five challenge commands and returns 54 maintenance writes to review. These are controlled rule-policy results, independent of the MSU ML benchmark.
 
 See [the full runbook](docs/PORTFOLIO_RUNBOOK.md) for build instructions, saved KQL queries, native SIEM alerts, tests, video recording, evidence paths and limitations. Generated deliverables are under `out/portfolio_demo/`; archived findings are under `docs/portfolio/`.
 

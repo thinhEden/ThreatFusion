@@ -48,8 +48,12 @@ Every decision is auditable. A downgrade does not erase the packet or the raw ca
 | Main | Bounded authorization | 80 | 0 | 0 | 100% |
 | Compromised-endpoint challenge | Broad rule | 5 | 0 | 0 | 100% |
 | Compromised-endpoint challenge | Bounded authorization | 0 | 0 | 5 | 0% |
+| Main | Bounded + host alert (constructed) | 80 | 54 | 0 | 100% |
+| Compromised-endpoint challenge | Bounded + host alert (constructed) | 5 | 0 | 0 | 100% |
 
 The main result is 60/60 maintenance FPs removed without losing its 80 explicit violations. The challenge consists of malicious-intent commands whose packet fields fit unused authorization. Context cannot distinguish them from permitted commands. Combined Recall is therefore **94.12%, not 100%**. Report both captures and the negative result.
+
+`bounded-host` adds the missing host evidence as a constructed scenario. `host_alerts.csv` holds a real OTRF WIN-001 detection (encoded PowerShell stager), re-timed to 10:01:30Z and mapped to the engineering workstation. The engine then refuses to suppress any write from that host for one hour (`--host-alerts`, `--host-alert-window 3600`) and adds correlation detection HOST-OT-001. The five challenge commands are retained. The price is that 54 approved maintenance writes after the alert return to review, because a compromised workstation cannot vouch for its own session. This shows how the correlation works on a designed timeline; it is not a measured detection rate.
 
 Ground truth comes from the scenario plan. A production analyst would also need operator/identity, EDR, change-control and PLC history evidence; those are not available here. No actual PLC effects, malware-family detection or production zero-FP claim is established.
 
@@ -69,7 +73,18 @@ python tools/siem_elastic.py stop
 
 Open Discover and select one of the six saved `TF - ...` investigations. Set absolute UTC time to 2026-09-30 09:58-10:15; Kibana may display local time (16:58-17:15 in Asia/Saigon). For native Security Alerts, select the whole day or the rule execution time. The recorder configures these ranges explicitly.
 
-The runner bulk-indexes 255 deterministic ECS documents: baseline 145, bounded 80, peer-only 30. IDs include capture, variant and packet ID, so replaying the same demo updates documents instead of duplicating them. Six query definitions are in `siem/elastic/queries.json`; five equivalent Elasticsearch investigation predicates are executed and recorded by verification. Expected counts are engineering baseline 115, retained contextual 80, unauthorized source 60, dangerous values 20, and challenge 5.
+The runner bulk-indexes 394 deterministic ECS documents: baseline 145, bounded-host 139, bounded 80 and peer-only 30. IDs include capture, variant and packet ID, so replaying the demo updates documents instead of duplicating them. The saved queries are in `siem/elastic/queries.json`. Verification runs six equivalent Elasticsearch predicates and records their counts:
+
+| Predicate | Count |
+|---|---:|
+| Engineering baseline | 115 |
+| Retained contextual | 80 |
+| Unauthorized source | 80 |
+| Dangerous values | 30 |
+| Challenge | 10 |
+| Host correlation (HOST-OT-001) | 109 |
+
+These counts span all variants, so they are larger than the per-variant alert counts.
 
 The rule `ThreatFusion - Retained OT command alerts` promotes bounded alerts with risk >=60 to native Elastic Security alerts. Ingestion also requests an on-demand run over the fixed packet time range, so replay does not depend on a current seven-day lookback. Execution is asynchronous; allow it to complete before recording. Expected native alert count is 80. The SIEM rule severity/risk is separate from the original C++ `event.risk_score`.
 

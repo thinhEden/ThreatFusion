@@ -117,7 +117,7 @@
       "color": "#2e8b57",
       "enabled": true,
       "showSubtechniques": true,
-      "comment": "Rules: behavior:BR-001 (high), behavior:BR-003 (high), behavior:BR-005 (medium), behavior:BR-010 (high), behavior:BR-011 (low), suricata:2100101 (high), suricata:2100107 (high), suricata:2100108 (high). Public data: MSCI: 100.0% of test packets alerted as T1692.001 (baseline), any-alert recall 1.000 baseline / 0.000 envelope; MPCI: 100.0% of test packets alerted as T1692.001 (baseline), any-alert recall 1.000 baseline / 0.789 envelope; MFCI: 0.0% of test packets alerted as T1692.001 (baseline), any-alert recall 0.000 baseline / 0.000 envelope.",
+      "comment": "Rules: behavior:BR-001 (high), behavior:BR-003 (high), behavior:BR-005 (medium), behavior:BR-010 (high), behavior:BR-011 (low), suricata:2100101 (high), suricata:2100107 (high), suricata:2100108 (high), correlation:HOST-OT-001 (high). Public data: MSCI: 100.0% of test packets alerted as T1692.001 (baseline), any-alert recall 1.000 baseline / 0.000 envelope; MPCI: 100.0% of test packets alerted as T1692.001 (baseline), any-alert recall 1.000 baseline / 0.789 envelope; MFCI: 0.0% of test packets alerted as T1692.001 (baseline), any-alert recall 0.000 baseline / 0.000 envelope.",
       "links": [
         {
           "label": "ATT&CK",

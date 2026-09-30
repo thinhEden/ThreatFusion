@@ -16,7 +16,7 @@ The engine writes each alert's IDs to the `attack_techniques` column, to ECS `th
 | [T0846](https://attack.mitre.org/techniques/T0846/) | Remote System Discovery | Attack detected on public data, but labelled with another technique | `behavior:BR-009` (low) |
 | [T0858](https://attack.mitre.org/techniques/T0858/) | Change Operating Mode | Rule mapped, not measured | `suricata:2100104` (high) |
 | [T0888](https://attack.mitre.org/techniques/T0888/) | Remote System Information Discovery | Detected as this technique on public data (best category: 44.9% of packets) | `behavior:BR-006` (high), `suricata:2100102` (high) |
-| [T1692.001](https://attack.mitre.org/techniques/T1692/001/) | Unauthorized Message: Command Message | Detected as this technique on public data (best category: 100.0% of packets) | `behavior:BR-001` (high), `behavior:BR-003` (high), `behavior:BR-005` (medium), `behavior:BR-010` (high), `behavior:BR-011` (low), `suricata:2100101` (high), `suricata:2100107` (high), `suricata:2100108` (high) |
+| [T1692.001](https://attack.mitre.org/techniques/T1692/001/) | Unauthorized Message: Command Message | Detected as this technique on public data (best category: 100.0% of packets) | `behavior:BR-001` (high), `behavior:BR-003` (high), `behavior:BR-005` (medium), `behavior:BR-010` (high), `behavior:BR-011` (low), `suricata:2100101` (high), `suricata:2100107` (high), `suricata:2100108` (high), `correlation:HOST-OT-001` (high) |
 | [T1692.002](https://attack.mitre.org/techniques/T1692/002/) | Unauthorized Message: Reporting Message | Attack present in public data, no detection | none |
 | [T1693](https://attack.mitre.org/techniques/T1693/) | Modify Firmware | Rule mapped, not measured | `behavior:BR-008` (medium) |
 
