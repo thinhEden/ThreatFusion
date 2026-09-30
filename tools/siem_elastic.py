@@ -75,6 +75,8 @@ def setup():
         'threatfusion.function_code': {'type': 'integer'}, 'threatfusion.unit_id': {'type': 'integer'},
         'threatfusion.register_address': {'type': 'integer'}, 'threatfusion.register_values': {'type': 'integer'},
         'threatfusion.latency_ms': {'type': 'float'}, 'message': {'type': 'text'},
+        'threat.framework': {'type': 'keyword'}, 'threat.technique.id': {'type': 'keyword'},
+        'threat.software.id': {'type': 'keyword'},
     }
     api(ES, '/_index_template/threatfusion', {
         'index_patterns': ['threatfusion-alerts-*'],
@@ -133,6 +135,19 @@ def utc_timestamp(value):
         return stamp.isoformat()
 
 
+def attack_fields(value):
+    """ECS threat.* fields from the engine's '|'-joined ATT&CK technique (T...) and software (S...) IDs."""
+    ids = [i for i in (value or '').split('|') if i]
+    if not ids:
+        return {}
+    threat = {'framework': 'MITRE ATT&CK'}
+    if techniques := [i for i in ids if i.startswith('T')]:
+        threat['technique'] = {'id': techniques}
+    if software := [i for i in ids if i.startswith('S')]:
+        threat['software'] = {'id': software}
+    return {'threat': threat}
+
+
 def ecs_document(alert, event, variant, capture):
     return {
         '@timestamp': utc_timestamp(alert['timestamp']),
@@ -146,6 +161,7 @@ def ecs_document(alert, event, variant, capture):
                         'latency_ms': float(alert['latency_ms']), 'verdict': alert['verdict'],
                         'function_code': event['function_code'], 'unit_id': event['unit_id'],
                         'register_address': event['register_address'], 'register_values': event['register_values']},
+        **attack_fields(alert.get('attack_techniques')),
     }
 
 

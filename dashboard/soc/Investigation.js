@@ -15,6 +15,10 @@ import {
   Empty,
 } from "./common.js";
 
+// T1692.001 -> techniques/T1692/001/, S0603 -> software/S0603/
+const attackUrl = (id) =>
+  `https://attack.mitre.org/${id.startsWith("S") ? "software" : "techniques"}/${id.replace(".", "/")}/`;
+
 export function Investigation({
   row,
   rows,
@@ -114,6 +118,21 @@ export function Investigation({
           <span className="mono">Risk {fmt(row.risk)}</span>
         </div>
         <h3>{row.classification}</h3>
+        {row.attack?.length > 0 && (
+          <p className="attack-ids" aria-label="MITRE ATT&CK mapping">
+            {row.attack.map((id) => (
+              <a
+                key={id}
+                className="mono"
+                href={attackUrl(id)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {id}
+              </a>
+            ))}
+          </p>
+        )}
         <p className="mono">
           {row.source_ip} <Icon name="arrow-right" /> {row.destination_ip}
         </p>

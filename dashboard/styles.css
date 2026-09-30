@@ -712,6 +712,23 @@ tbody tr:hover {
   font-size: 12px;
   margin-bottom: 5px;
 }
+.attack-ids {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.attack-ids a {
+  font-size: 11px;
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--green);
+  text-decoration: none;
+}
+.attack-ids a:hover,
+.attack-ids a:focus-visible {
+  border-color: var(--green);
+}
 .tabs {
   display: flex;
   border-bottom: 1px solid var(--line);

@@ -92,7 +92,7 @@ def snapshot(source, portfolio, live_rows, total, store, imports_dir, events_pat
             'protocol':raw.get('protocol') or 'Unknown', 'classification':raw.get('classification') or 'Unclassified',
             'severity':active.get('top_severity','unknown').lower(), 'risk':number(active.get('risk_score')),
             'baseline_risk':number(raw.get('risk_score')), 'latency_ms':number(active.get('latency_ms')),
-            'reasons':active.get('reasons',''), 'context':action, 'audit':decision, 'evidence':event,
+            'reasons':active.get('reasons',''), 'attack':[i for i in (active.get('attack_techniques') or '').split('|') if i], 'context':action, 'audit':decision, 'evidence':event,
             'lab_reference':truth.get(identity) if kind == 'recorded_lab' else None,
             'triage':states.get(digest,{'status':'Open','owner':'','disposition':'Unreviewed','updated_at':None}),
             'raw':raw,
