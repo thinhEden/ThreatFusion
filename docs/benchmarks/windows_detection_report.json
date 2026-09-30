@@ -1,0 +1,261 @@
+{
+  "index": "threatfusion-windows-otrf",
+  "documents": {
+    "empire_mimikatz_logonpasswords": 6026,
+    "empire_psexec_dcerpc_tcp_svcctl": 4348,
+    "empire_launcher_vbs": 2067,
+    "empire_schtasks_creation_standard_user": 1297,
+    "psh_lsass_memory_dump_comsvcs": 175
+  },
+  "dataset_sha256": {
+    "empire_launcher_vbs": "812da270cf8cda6f1948fb6275410f15dc1794d0bd6b623c9c25b2518285019c",
+    "empire_mimikatz_logonpasswords": "bb4c057b62d781be5426e011872ba1a15070c07afbb24848a14458f4b22b06fb",
+    "empire_psexec_dcerpc_tcp_svcctl": "8f40e7fc86bbbf31ebd50b3ba537cf0f4378392ae3e74de84bee00aeb0de1fa5",
+    "empire_schtasks_creation_standard_user": "b073a18420c90394cd2b6ad7589c78d90eba32dc155ed04b12ac824a8fc591b4",
+    "psh_lsass_memory_dump_comsvcs": "0af9e920220d746432f0972be83ad057629695540aecd68c15869d190786e1ae"
+  },
+  "rules": {
+    "WIN-001": {
+      "hits": 4,
+      "TP": 4,
+      "FP": 0,
+      "unreviewed": 0,
+      "precision": 1.0,
+      "datasets": {
+        "empire_launcher_vbs": 2,
+        "empire_psexec_dcerpc_tcp_svcctl": 2
+      }
+    },
+    "WIN-002": {
+      "hits": 3,
+      "TP": 3,
+      "FP": 0,
+      "unreviewed": 0,
+      "precision": 1.0,
+      "datasets": {
+        "empire_mimikatz_logonpasswords": 1,
+        "psh_lsass_memory_dump_comsvcs": 2
+      }
+    },
+    "WIN-003": {
+      "hits": 2,
+      "TP": 2,
+      "FP": 0,
+      "unreviewed": 0,
+      "precision": 1.0,
+      "datasets": {
+        "psh_lsass_memory_dump_comsvcs": 2
+      }
+    },
+    "WIN-004": {
+      "hits": 2,
+      "TP": 2,
+      "FP": 0,
+      "unreviewed": 0,
+      "precision": 1.0,
+      "datasets": {
+        "empire_psexec_dcerpc_tcp_svcctl": 2
+      }
+    },
+    "WIN-005": {
+      "hits": 3,
+      "TP": 3,
+      "FP": 0,
+      "unreviewed": 0,
+      "precision": 1.0,
+      "datasets": {
+        "empire_schtasks_creation_standard_user": 3
+      }
+    },
+    "WIN-006": {
+      "hits": 2,
+      "TP": 2,
+      "FP": 0,
+      "unreviewed": 0,
+      "precision": 1.0,
+      "datasets": {
+        "empire_launcher_vbs": 2
+      }
+    }
+  },
+  "coverage": {
+    "psh_lsass_memory_dump_comsvcs": {
+      "otrf_id": "SDWIN-201018195009",
+      "otrf_technique": "T1003.001",
+      "rules_with_tp": [
+        "WIN-002",
+        "WIN-003"
+      ],
+      "rules_mapped_to_otrf_technique": [
+        "WIN-002",
+        "WIN-003"
+      ]
+    },
+    "empire_mimikatz_logonpasswords": {
+      "otrf_id": "SDWIN-190518202151",
+      "otrf_technique": "T1003.001",
+      "rules_with_tp": [
+        "WIN-002"
+      ],
+      "rules_mapped_to_otrf_technique": [
+        "WIN-002"
+      ]
+    },
+    "empire_schtasks_creation_standard_user": {
+      "otrf_id": "SDWIN-190319024742",
+      "otrf_technique": "T1053.005",
+      "rules_with_tp": [
+        "WIN-005"
+      ],
+      "rules_mapped_to_otrf_technique": [
+        "WIN-005"
+      ]
+    },
+    "empire_psexec_dcerpc_tcp_svcctl": {
+      "otrf_id": "SDWIN-190518210652",
+      "otrf_technique": "T1021",
+      "rules_with_tp": [
+        "WIN-001",
+        "WIN-004"
+      ],
+      "rules_mapped_to_otrf_technique": []
+    },
+    "empire_launcher_vbs": {
+      "otrf_id": "SDWIN-190518182022",
+      "otrf_technique": "T1059.005",
+      "rules_with_tp": [
+        "WIN-001",
+        "WIN-006"
+      ],
+      "rules_mapped_to_otrf_technique": [
+        "WIN-006"
+      ]
+    }
+  },
+  "hits": {
+    "WIN-001": [
+      {
+        "event_id": "0f967b3f389fc9e89803",
+        "dataset": "empire_launcher_vbs",
+        "timestamp": "2020-09-04T20:09:57.060Z",
+        "evidence": "1 WORKSTATION5.theshire.local parent=wscript.exe \"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -noP -sta -w 1 -enc  SQBmACgAJABQAFMAVgBFAFIAUwBpAE8AbgBUAGEAQgBsAEUALgBQAFMAVgBFAHIAUwBJAE8AbgAuAE0",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "16b62f7dc9e074c31e30",
+        "dataset": "empire_launcher_vbs",
+        "timestamp": "2020-09-04T20:09:57.091Z",
+        "evidence": "4688 WORKSTATION5.theshire.local parent=wscript.exe \"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -noP -sta -w 1 -enc  SQBmACgAJABQAFMAVgBFAFIAUwBpAE8AbgBUAGEAQgBsAEUALgBQAFMAVgBFAHIAUwBJAE8AbgAuAE0",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "c56f10bb25afa2f79b30",
+        "dataset": "empire_psexec_dcerpc_tcp_svcctl",
+        "timestamp": "2020-09-20T16:16:57.124Z",
+        "evidence": "1 WORKSTATION6.theshire.local parent=cmd.exe C:\\Windows\\System32\\WindowsPowershell\\v1.0\\powershell  -noP -sta -w 1 -enc  SQBmACgAJABQAFMAVgBFAHIAUwBpAE8AbgBUAGEAYgBsAEUALgBQAFMAVgBFAFIAcwBJAE8AbgAuAE0AYQBq",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "84baf0804a4e01955dc7",
+        "dataset": "empire_psexec_dcerpc_tcp_svcctl",
+        "timestamp": "2020-09-20T16:16:58.227Z",
+        "evidence": "4688 WORKSTATION6.theshire.local parent=cmd.exe C:\\Windows\\System32\\WindowsPowershell\\v1.0\\powershell  -noP -sta -w 1 -enc  SQBmACgAJABQAFMAVgBFAHIAUwBpAE8AbgBUAGEAYgBsAEUALgBQAFMAVgBFAFIAcwBJAE8AbgAuAE0AYQBq",
+        "disposition": "TP"
+      }
+    ],
+    "WIN-002": [
+      {
+        "event_id": "23ad7c7c2da765f6b0d6",
+        "dataset": "empire_mimikatz_logonpasswords",
+        "timestamp": "2020-08-07T14:32:57.589Z",
+        "evidence": "10 WORKSTATION5.theshire.local C:\\windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -> C:\\windows\\system32\\lsass.exe 0x1010",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "ad4adf744efd8a33037f",
+        "dataset": "psh_lsass_memory_dump_comsvcs",
+        "timestamp": "2020-10-18T07:50:06.001000Z",
+        "evidence": "10 WORKSTATION5 C:\\Windows\\System32\\rundll32.exe -> C:\\windows\\system32\\lsass.exe 0x1410",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "46bc249b1bebbd7f055f",
+        "dataset": "psh_lsass_memory_dump_comsvcs",
+        "timestamp": "2020-10-18T07:50:06.025000Z",
+        "evidence": "10 WORKSTATION5 C:\\Windows\\System32\\rundll32.exe -> C:\\windows\\system32\\lsass.exe 0x1fffff",
+        "disposition": "TP"
+      }
+    ],
+    "WIN-003": [
+      {
+        "event_id": "6fcc09798785bf821105",
+        "dataset": "psh_lsass_memory_dump_comsvcs",
+        "timestamp": "2020-10-18T07:50:05.910000Z",
+        "evidence": "4688 WORKSTATION5 parent=powershell.exe \"C:\\Windows\\System32\\rundll32.exe\" C:\\windows\\System32\\comsvcs.dll MiniDump 756 C:\\Users\\wardog\\AppData\\Local\\Temp\\lsass-comsvcs.dmp full",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "b820e0b8320868323e56",
+        "dataset": "psh_lsass_memory_dump_comsvcs",
+        "timestamp": "2020-10-18T07:50:05.917000Z",
+        "evidence": "1 WORKSTATION5 parent=powershell.exe \"C:\\Windows\\System32\\rundll32.exe\" C:\\windows\\System32\\comsvcs.dll MiniDump 756 C:\\Users\\wardog\\AppData\\Local\\Temp\\lsass-comsvcs.dmp full",
+        "disposition": "TP"
+      }
+    ],
+    "WIN-004": [
+      {
+        "event_id": "3dacf37a03a6495447df",
+        "dataset": "empire_psexec_dcerpc_tcp_svcctl",
+        "timestamp": "2020-09-20T16:16:58.214Z",
+        "evidence": "4697 WORKSTATION6.theshire.local %COMSPEC% /C start /b C:\\Windows\\System32\\WindowsPowershell\\v1.0\\powershell -noP -sta -w 1 -enc  SQBmACgAJABQAFMAVgBFAHIAUwBpAE8AbgBUAGEAYgBsAEUALgBQAFMAVgBFAFI",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "70d869f2700bfc04ded6",
+        "dataset": "empire_psexec_dcerpc_tcp_svcctl",
+        "timestamp": "2020-09-20T16:16:58.233Z",
+        "evidence": "7045 WORKSTATION6.theshire.local %COMSPEC% /C start /b C:\\Windows\\System32\\WindowsPowershell\\v1.0\\powershell -noP -sta -w 1 -enc  SQBmACgAJABQAFMAVgBFAHIAUwBpAE8AbgBUAGEAYgBsAEUALgBQAFMAVgBFAFI",
+        "disposition": "TP"
+      }
+    ],
+    "WIN-005": [
+      {
+        "event_id": "a1580404a98652783f6f",
+        "dataset": "empire_schtasks_creation_standard_user",
+        "timestamp": "2020-09-21T07:15:45.860Z",
+        "evidence": "1 WORKSTATION5.theshire.local parent=powershell.exe \"C:\\windows\\system32\\schtasks.exe\" /Create /F /SC DAILY /ST 09:00 /TN MordorSchtask /TR \"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NonI -W hidd",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "f2b615ddab9808fdfd7b",
+        "dataset": "empire_schtasks_creation_standard_user",
+        "timestamp": "2020-09-21T07:15:46.933Z",
+        "evidence": "4688 WORKSTATION5.theshire.local parent=powershell.exe \"C:\\windows\\system32\\schtasks.exe\" /Create /F /SC DAILY /ST 09:00 /TN MordorSchtask /TR \"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -NonI -W hidd",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "d43c5d2ad0f870c51872",
+        "dataset": "empire_schtasks_creation_standard_user",
+        "timestamp": "2020-09-21T07:15:47.930Z",
+        "evidence": "4698 WORKSTATION5.theshire.local \\MordorSchtask",
+        "disposition": "TP"
+      }
+    ],
+    "WIN-006": [
+      {
+        "event_id": "0f967b3f389fc9e89803",
+        "dataset": "empire_launcher_vbs",
+        "timestamp": "2020-09-04T20:09:57.060Z",
+        "evidence": "1 WORKSTATION5.theshire.local parent=wscript.exe \"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -noP -sta -w 1 -enc  SQBmACgAJABQAFMAVgBFAFIAUwBpAE8AbgBUAGEAQgBsAEUALgBQAFMAVgBFAHIAUwBJAE8AbgAuAE0",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "16b62f7dc9e074c31e30",
+        "dataset": "empire_launcher_vbs",
+        "timestamp": "2020-09-04T20:09:57.091Z",
+        "evidence": "4688 WORKSTATION5.theshire.local parent=wscript.exe \"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" -noP -sta -w 1 -enc  SQBmACgAJABQAFMAVgBFAFIAUwBpAE8AbgBUAGEAQgBsAEUALgBQAFMAVgBFAHIAUwBJAE8AbgAuAE0",
+        "disposition": "TP"
+      }
+    ]
+  }
+}
