@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <set>
 #include <sstream>
 
 namespace threatfusion {
@@ -99,6 +100,14 @@ Alert RiskScorer::score(const Event& event, const std::vector<Detection>& detect
     alert.riskScore = std::min(100, static_cast<int>(std::round(bestRisk)));
     alert.verdict = alert.riskScore >= 80 ? "critical" : alert.riskScore >= 60 ? "malicious" : alert.riskScore >= 35 ? "suspicious" : "benign";
     alert.reasons = reasons.str();
+
+    std::set<std::string> attack;
+    for (const auto& detection : detections) {
+        for (const auto& id : split(detection.attack, '|')) {
+            if (!id.empty()) attack.insert(id);
+        }
+    }
+    for (const auto& id : attack) alert.attack += (alert.attack.empty() ? "" : "|") + id;
     return alert;
 }
 

@@ -1,3 +1,4 @@
+#include "threatfusion/AttackMapping.h"
 #include "threatfusion/BehaviorDetector.h"
 #include "threatfusion/Csv.h"
 #include "threatfusion/DataIngestion.h"
@@ -139,6 +140,35 @@ int main() {
     catch (...) { invalidEnvelope = true; }
     assert(invalidEnvelope);
     std::remove(policy);
+  }
+
+  {
+    const char* mapPath = "test_attack_map.csv";
+    writeCsv(mapPath, {"source", "indicator", "techniques", "software", "confidence", "rationale"},
+             {{"behavior", "R1", "T1692.001", "", "high", "write"},
+              {"behavior", "R2", "", "", "none", "heuristic"},
+              {"suricata", "2100104", "T0858", "", "high", "stop"},
+              {"yara", "ICS_Stuxnet_Production", "", "S0603", "medium", "lab"}});
+    AttackMapping mapping;
+    mapping.load(mapPath);
+    Detection write{"e", "behavior", "R1", "high", "Command Injection", "write", .8};
+    assert(mapping.lookup(write) == "T1692.001");
+    assert(mapping.lookup({"e", "behavior", "R2"}).empty());
+    assert(mapping.lookup({"e", "behavior", "unknown"}).empty());
+    Detection suricata;
+    suricata.source = "suricata";
+    suricata.indicator = "09/30/2026-10:00:00.000000  [**] [1:2100104:1] THREATFUSION S7comm CPU Stop Command [**]";
+    assert(mapping.lookup(suricata) == "T0858");
+    Detection yara;
+    yara.source = "yara";
+    yara.indicator = "ICS_Stuxnet_Production C:\\lab\\sample.bin";
+    assert(mapping.lookup(yara) == "S0603");
+    write.attack = mapping.lookup(write);
+    suricata.attack = "T0858|T1692.001";
+    Event target;
+    target.id = "e"; target.assetRole = "plc";
+    assert(RiskScorer().score(target, {write, suricata}).attack == "T0858|T1692.001");
+    std::remove(mapPath);
   }
 
   // Test LSTMDetector

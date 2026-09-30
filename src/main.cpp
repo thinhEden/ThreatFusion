@@ -1,3 +1,4 @@
+#include "threatfusion/AttackMapping.h"
 #include "threatfusion/BaselineDetector.h"
 #include "threatfusion/BehaviorDetector.h"
 #include "threatfusion/Csv.h"
@@ -52,6 +53,8 @@ struct Options {
   std::string metricsPath = "out/metrics.txt";
   std::string scoresPath;
   std::string timingsPath;
+  std::string attackMapPath = "data/attack_mapping.csv";
+  bool attackMapRequired = false;
   std::string contextPath;
   std::string contextMode = "bounded";
   std::string contextAuditPath = "out/context_audit.csv";
@@ -77,7 +80,8 @@ static void printUsage() {
   std::cout << "                    [--scores path] (raw IF/LSTM scores for research)\n";
   std::cout << "                    [--context policy.json --context-audit path]\n"
                "                    [--context-mode bounded|peer-only] (peer-only is an unsafe ablation)\n"
-               "                    [--normalized-events path] [--pcap-filter expression] [--timings path]\n";
+               "                    [--normalized-events path] [--pcap-filter expression] [--timings path]\n"
+               "                    [--attack-map data/attack_mapping.csv] (MITRE ATT&CK IDs per detection)\n";
 }
 
 static Options parseArgs(int argc, char **argv) {
@@ -135,6 +139,10 @@ static Options parseArgs(int argc, char **argv) {
       options.scoresPath = requireValue(arg);
     else if (arg == "--timings")
       options.timingsPath = requireValue(arg);
+    else if (arg == "--attack-map") {
+      options.attackMapPath = requireValue(arg);
+      options.attackMapRequired = true;
+    }
     else if (arg == "--context")
       options.contextPath = requireValue(arg);
     else if (arg == "--context-mode")
@@ -172,6 +180,13 @@ int main(int argc, char **argv) {
 
     BehaviorDetector detector;
     detector.loadRules(options.rulesPath);
+
+    AttackMapping attackMapping;
+    if (std::ifstream(options.attackMapPath)) attackMapping.load(options.attackMapPath);
+    else if (options.attackMapRequired) throw std::runtime_error("Cannot open ATT&CK mapping: " + options.attackMapPath);
+    auto annotate = [&](std::vector<Detection>& detections) {
+      for (auto& detection : detections) detection.attack = attackMapping.lookup(detection);
+    };
 
     OtContext context;
     std::vector<std::vector<std::string>> contextAuditRows;
@@ -248,6 +263,7 @@ int main(int argc, char **argv) {
         detections.insert(detections.end(), external.begin(), external.end());
 
         applyContext(event, detections);
+        annotate(detections);
 
         if (detections.empty()) {
           return;
@@ -269,12 +285,13 @@ int main(int argc, char **argv) {
         appendCsv("out/alerts_stream.csv",
           {"incident_id", "event_id", "timestamp", "src_ip", "dst_ip", "asset_role",
            "protocol", "classification", "top_severity", "asset_criticality",
-           "threat_severity", "confidence_score", "risk_score", "latency_ms", "verdict", "reasons"},
+           "threat_severity", "confidence_score", "risk_score", "latency_ms", "verdict", "reasons",
+           "attack_techniques"},
           {alert.incidentId, alert.eventId, alert.timestamp, alert.srcIp, alert.dstIp,
            alert.assetRole, alert.protocol, alert.classification, alert.topSeverity,
            precise(alert.assetCriticality), precise(alert.threatSeverity),
            precise(alert.confidenceScore), std::to_string(alert.riskScore),
-           precise(alert.latencyMs), alert.verdict, alert.reasons});
+           precise(alert.latencyMs), alert.verdict, alert.reasons, alert.attack});
       };
 
       if (!receiver.start(options.port, callback)) {
@@ -324,6 +341,7 @@ int main(int argc, char **argv) {
       detections.insert(detections.end(), external.begin(), external.end());
 
       applyContext(event, detections);
+      annotate(detections);
 
       if (!options.scoresPath.empty()) {
         const auto error = lstmDetector.lastError();
@@ -356,7 +374,9 @@ int main(int argc, char **argv) {
       event.assetRole =
           detection.assetRole.empty() ? "network" : detection.assetRole;
       event.protocol = detection.protocol.empty() ? "pcap" : detection.protocol;
-      auto alert = scorer.score(event, {detection});
+      std::vector<Detection> external = {detection};
+      annotate(external);
+      auto alert = scorer.score(event, external);
       alert.latencyMs = 0.0;
       alerts.push_back(alert);
     }
@@ -378,14 +398,14 @@ int main(int argc, char **argv) {
            std::to_string(alert.threatSeverity),
            std::to_string(alert.confidenceScore),
            std::to_string(alert.riskScore), std::to_string(alert.latencyMs),
-           alert.verdict, alert.reasons});
+           alert.verdict, alert.reasons, alert.attack});
     }
 
     writeCsv(options.alertsPath,
              {"incident_id", "event_id", "timestamp", "src_ip", "dst_ip",
               "asset_role", "protocol", "classification", "top_severity",
               "asset_criticality", "threat_severity", "confidence_score",
-              "risk_score", "latency_ms", "verdict", "reasons"},
+              "risk_score", "latency_ms", "verdict", "reasons", "attack_techniques"},
              alertRows);
 
     std::vector<std::vector<std::string>> incidentRows;

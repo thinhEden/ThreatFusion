@@ -17,6 +17,7 @@ struct Detection {
     std::string dstIp;
     std::string protocol;
     std::string assetRole;
+    std::string attack;  // '|'-joined MITRE ATT&CK technique/software IDs
 };
 
 struct Alert {
@@ -36,6 +37,7 @@ struct Alert {
     double latencyMs = 0.0;
     std::string verdict;
     std::string reasons;
+    std::string attack;  // Union of detection ATT&CK IDs, sorted and '|'-joined
 };
 
 } // namespace threatfusion

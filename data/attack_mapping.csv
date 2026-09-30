@@ -1,0 +1,26 @@
+source,indicator,techniques,software,confidence,rationale
+behavior,BR-001,T1692.001,,high,"Modbus write functions 5/6/15/16 to a PLC are command messages; OT context decides whether they are unauthorized."
+behavior,BR-002,T0843,,high,S7comm download request (function 240).
+behavior,BR-003,T1692.001,,high,DNP3 Select/Operate control functions.
+behavior,BR-004,,,none,"Volume heuristic; staging or exfiltration cannot be attributed to one technique."
+behavior,BR-005,T1692.001,,medium,A security control blocked an industrial command; indicates an attempted command message.
+behavior,BR-006,T0888,,high,"Modbus Read Device Identification (FC 43) returns vendor, product and revision."
+behavior,BR-007,T0814,,medium,Large transfer to an HMI; flooding is one possible cause.
+behavior,BR-008,T1693,,medium,S7 firmware or maintenance function; the rule cannot tell system from module firmware.
+behavior,BR-009,T0846,,low,Matches any BACnet traffic; discovery is a review hint.
+behavior,BR-010,T1692.001,,high,IEC-104 control ASDU.
+behavior,BR-011,T1692.001,,low,Matches any MMS traffic; control operations are the main risk.
+behavior,BR-012,T0802,,low,High-volume OPC UA reads can indicate automated collection.
+behavior,BR-013,T0843,,low,Matches any CODESYS engineering traffic; program download is the main risk.
+suricata,2100101,T1692.001,,high,Modbus Write Multiple Registers (FC 16).
+suricata,2100102,T0888,,high,Modbus Read Device Identification (FC 43).
+suricata,2100103,T0843,,high,S7comm program download request.
+suricata,2100104,T0858,,high,S7comm CPU stop changes the controller operating mode.
+suricata,2100105,T0816,,high,DNP3 cold or warm restart.
+suricata,2100106,T0816,,high,DNP3 warm restart function 0x0E.
+suricata,2100107,T1692.001,,high,IEC-104 single command (type 45).
+suricata,2100108,T1692.001,,high,IEC-104 double command (type 46).
+yara,ICS_Stuxnet_Production,,S0603,medium,"Lab family indicator strings, not validated against real samples."
+yara,ICS_Triton_Trisis_Production,,S1009,medium,"Lab family indicator strings, not validated against real samples."
+yara,ICS_Industroyer_Production,,S0604,medium,"Lab family indicator strings, not validated against real samples."
+yara,ICS_PipeDream_Production,,S1045,medium,"Lab family indicator strings, not validated against real samples."
