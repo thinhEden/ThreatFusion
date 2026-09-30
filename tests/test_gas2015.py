@@ -77,5 +77,29 @@ class GasPipeline2015Tests(unittest.TestCase):
             self.assertEqual(reasons['GP15-5'], 'Parameter outside operating envelope: gain')
 
 
+class AnomalyBenchmarkHelperTests(unittest.TestCase):
+    def test_threshold_free_metrics_handle_ties(self):
+        from benchmark_gas2015_ai import average_precision, roc_auc
+        import numpy as np
+        y = np.array([True, False, True, False])
+        self.assertEqual(roc_auc(y, np.array([.9, .1, .8, .2])), 1.0)
+        self.assertEqual(roc_auc(y, np.array([.5, .5, .5, .5])), 0.5)
+        self.assertAlmostEqual(average_precision(y, np.array([.9, .8, .1, .2])), (1 + 2 / 4) / 2)
+        self.assertIsNone(roc_auc(np.array([True, True]), np.array([.1, .2])))
+
+    def test_novelty_rules_learn_only_from_training_values(self):
+        from benchmark_gas2015_ai import range_rule, state_rule
+        with tempfile.TemporaryDirectory() as folder:
+            rows = fixture(folder)
+        train, (known_write, unseen_state, outside_gain) = rows[:3], rows[2:]
+        flags, reasons = range_rule(train, [known_write, unseen_state, outside_gain])
+        # The fourth row repeats known function/length but its setpoint 12 lies outside the single training value 10.
+        self.assertEqual(list(flags), [False, True, True])
+        self.assertIn('setpoint', reasons[1])
+        self.assertIn('gain', reasons[2])
+        self.assertEqual(list(state_rule(train, [known_write, unseen_state, outside_gain])), [False, True, False])
+        self.assertFalse(state_rule(train, [rows[0]])[0], 'Only FC16 writes carry a state combination')
+
+
 if __name__ == '__main__':
     unittest.main()
