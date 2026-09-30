@@ -98,5 +98,63 @@
     "language": "esql",
     "query": "FROM threatfusion-windows-otrf\n| WHERE (event.code == \"4771\" AND winlog.event_data.Status == \"0x18\") OR (event.code == \"4768\" AND winlog.event_data.Status == \"0x6\")\n| EVAL source_ip = REPLACE(winlog.event_data.IpAddress, \"^::ffff:\", \"\")\n| STATS failures = COUNT(*), accounts = COUNT_DISTINCT(winlog.event_data.TargetUserName), first_seen = MIN(@timestamp), last_seen = MAX(@timestamp) BY source_ip, threatfusion.dataset, window = BUCKET(@timestamp, 5 minutes)\n| WHERE accounts >= 5",
     "false_positives": "A misconfigured service or a stale mapped drive retrying old credentials across several accounts, and NAT or proxy addresses aggregating many users. Check whether the accounts exist and whether any attempt later succeeded."
+  },
+  {
+    "id": "WIN-008",
+    "name": "Kerberoasting: RC4 service ticket for a user service account",
+    "description": "A domain controller issues a service ticket encrypted with RC4-HMAC (0x17) for a service that is not a computer account or krbtgt. Kerberoasting tools request RC4 because its hash cracks far faster than AES.",
+    "techniques": [
+      "T1558.003"
+    ],
+    "severity": "medium",
+    "risk_score": 47,
+    "evidence": "Security 4769 (domain controller)",
+    "language": "eql",
+    "query": "any where event.code == \"4769\" and winlog.event_data.Status == \"0x0\" and winlog.event_data.TicketEncryptionType == \"0x17\" and not winlog.event_data.ServiceName : (\"*$\", \"krbtgt\")",
+    "false_positives": "Legacy service accounts whose msDS-SupportedEncryptionTypes still allows only RC4, and old clients that cannot do AES. Inventory those SPNs and move them to AES rather than allow-listing the requester."
+  },
+  {
+    "id": "WIN-009",
+    "name": "Kerberoasting burst: RC4 tickets for many services from one source",
+    "description": "One source address receives RC4 service tickets for at least five different non-computer services within five minutes, the request pattern of tools that roast every SPN they enumerate.",
+    "techniques": [
+      "T1558.003"
+    ],
+    "severity": "high",
+    "risk_score": 73,
+    "evidence": "Security 4769 (domain controller)",
+    "language": "esql",
+    "query": "FROM threatfusion-windows-otrf\n| WHERE event.code == \"4769\" AND winlog.event_data.Status == \"0x0\" AND winlog.event_data.TicketEncryptionType == \"0x17\" AND NOT winlog.event_data.ServiceName LIKE \"*$\" AND winlog.event_data.ServiceName != \"krbtgt\"\n| EVAL source_ip = REPLACE(winlog.event_data.IpAddress, \"^::ffff:\", \"\")\n| STATS requests = COUNT(*), services = COUNT_DISTINCT(winlog.event_data.ServiceName), first_seen = MIN(@timestamp), last_seen = MAX(@timestamp) BY source_ip, threatfusion.dataset, window = BUCKET(@timestamp, 5 minutes)\n| WHERE services >= 5",
+    "false_positives": "A legacy application server that opens sessions to many RC4-only services at startup. It repeats on a schedule from a fixed host; an interactive burst from a workstation does not."
+  },
+  {
+    "id": "WIN-010",
+    "name": "Failed logon burst: password guessing or spraying from one source",
+    "description": "At least ten failed logons, or failures for at least five different accounts, from one source within five minutes. The source is the client address, or the workstation name when the logon carries no address (local and NTLM logons).",
+    "techniques": [
+      "T1110.001",
+      "T1110.003"
+    ],
+    "severity": "medium",
+    "risk_score": 47,
+    "evidence": "Security 4625 (target host)",
+    "language": "esql",
+    "query": "FROM threatfusion-windows-otrf\n| WHERE event.code == \"4625\"\n| EVAL source = CASE(winlog.event_data.IpAddress IS NOT NULL AND winlog.event_data.IpAddress != \"-\", REPLACE(winlog.event_data.IpAddress, \"^::ffff:\", \"\"), winlog.event_data.WorkstationName)\n| STATS failures = COUNT(*), accounts = COUNT_DISTINCT(winlog.event_data.TargetUserName), first_seen = MIN(@timestamp), last_seen = MAX(@timestamp) BY source, threatfusion.dataset, window = BUCKET(@timestamp, 5 minutes)\n| WHERE failures >= 10 OR accounts >= 5",
+    "false_positives": "A service or scheduled task with a changed password retrying every minute, a user locked out on a mobile device, and shared terminal servers or NAT addresses. Check SubStatus (0xc000006a wrong password, 0xc0000064 unknown user) and whether a success followed."
+  },
+  {
+    "id": "WIN-011",
+    "name": "NTLM validation failures for many accounts from one workstation",
+    "description": "A domain controller rejects NTLM credential validation at least ten times, or for at least five different accounts, from one workstation within five minutes. This is the domain-side view of NTLM guessing and spraying.",
+    "techniques": [
+      "T1110.001",
+      "T1110.003"
+    ],
+    "severity": "medium",
+    "risk_score": 47,
+    "evidence": "Security 4776 (domain controller)",
+    "language": "esql",
+    "query": "FROM threatfusion-windows-otrf\n| WHERE event.code == \"4776\" AND winlog.event_data.Status != \"0x0\"\n| EVAL source = winlog.event_data.Workstation\n| STATS failures = COUNT(*), accounts = COUNT_DISTINCT(winlog.event_data.TargetUserName), first_seen = MIN(@timestamp), last_seen = MAX(@timestamp) BY source, threatfusion.dataset, window = BUCKET(@timestamp, 5 minutes)\n| WHERE failures >= 10 OR accounts >= 5",
+    "false_positives": "Applications that validate stored credentials for many accounts, and workstation names that are blank or spoofed, since 4776 records the name the client supplies. Pair with 4625 on the target and network logs before blocking a host."
   }
 ]

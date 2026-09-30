@@ -6,7 +6,14 @@
     "empire_launcher_vbs": 2067,
     "empire_schtasks_creation_standard_user": 1297,
     "psh_lsass_memory_dump_comsvcs": 175,
-    "kerberos_pwd_spray_4771": 12
+    "splunk_t1110_003_purplesharp_invalid_users_ntlm": 137,
+    "splunk_t1110_003_purplesharp_valid_users_ntlm": 136,
+    "splunk_t1558_003_unusual_kerberos_service_tickets": 90,
+    "mdec_4769_tgs_host_enumeration_bloodhound": 24,
+    "mdec_4776_4625_local_bruteforce": 16,
+    "kerberos_pwd_spray_4771": 12,
+    "mdec_4769_kerberoast_low_encryption": 10,
+    "mdec_4625_denied_account_restriction": 2
   },
   "dataset_sha256": {
     "empire_launcher_vbs": "812da270cf8cda6f1948fb6275410f15dc1794d0bd6b623c9c25b2518285019c",
@@ -14,6 +21,13 @@
     "empire_psexec_dcerpc_tcp_svcctl": "8f40e7fc86bbbf31ebd50b3ba537cf0f4378392ae3e74de84bee00aeb0de1fa5",
     "empire_schtasks_creation_standard_user": "b073a18420c90394cd2b6ad7589c78d90eba32dc155ed04b12ac824a8fc591b4",
     "psh_lsass_memory_dump_comsvcs": "0af9e920220d746432f0972be83ad057629695540aecd68c15869d190786e1ae",
+    "mdec_4625_denied_account_restriction": "06aec213c40fe5eece31c8958d3774381f28e2cd44b7e60f214217a344bc2574",
+    "mdec_4769_kerberoast_low_encryption": "2c0360611fa5f43738e213638cf01a73c7701d8ddf510a3a03045a277739968a",
+    "mdec_4769_tgs_host_enumeration_bloodhound": "0ffd12cb62b2797e4e7a0675b132c27dfa5231b6b1a81cac92556335657d54bc",
+    "mdec_4776_4625_local_bruteforce": "83cc548d47150f1420bb47448f7a91c348a6c6f6890c2bb30abcab021b1a611a",
+    "splunk_t1110_003_purplesharp_invalid_users_ntlm": "5c7354784cef32c1ffcd6f5a56919741e35f03d361404ea275ab79b2db5576d1",
+    "splunk_t1110_003_purplesharp_valid_users_ntlm": "e3d316fde69dc39af7cd391f9141329a2693d531facbba30a564683cbc8d941a",
+    "splunk_t1558_003_unusual_kerberos_service_tickets": "e3e40630126969786c1a4c9cfcfea91773c5a4e3feb89cea28ac29fa6ef4117e",
     "kerberos_pwd_spray_4771": "4a0a1c7132e216dbc704c806e9429df9ae3ac00485d5238e50c776e3099ae11d"
   },
   "rules": {
@@ -88,69 +102,196 @@
       "datasets": {
         "kerberos_pwd_spray_4771": 1
       }
+    },
+    "WIN-008": {
+      "hits": 58,
+      "TP": 44,
+      "FP": 14,
+      "unreviewed": 0,
+      "precision": 0.7586206896551724,
+      "datasets": {
+        "mdec_4769_kerberoast_low_encryption": 1,
+        "splunk_t1558_003_unusual_kerberos_service_tickets": 57
+      }
+    },
+    "WIN-009": {
+      "hits": 1,
+      "TP": 1,
+      "FP": 0,
+      "unreviewed": 0,
+      "precision": 1.0,
+      "datasets": {
+        "splunk_t1558_003_unusual_kerberos_service_tickets": 1
+      }
+    },
+    "WIN-010": {
+      "hits": 3,
+      "TP": 3,
+      "FP": 0,
+      "unreviewed": 0,
+      "precision": 1.0,
+      "datasets": {
+        "mdec_4776_4625_local_bruteforce": 1,
+        "splunk_t1110_003_purplesharp_invalid_users_ntlm": 1,
+        "splunk_t1110_003_purplesharp_valid_users_ntlm": 1
+      }
+    },
+    "WIN-011": {
+      "hits": 2,
+      "TP": 2,
+      "FP": 0,
+      "unreviewed": 0,
+      "precision": 1.0,
+      "datasets": {
+        "splunk_t1110_003_purplesharp_invalid_users_ntlm": 1,
+        "splunk_t1110_003_purplesharp_valid_users_ntlm": 1
+      }
     }
   },
   "coverage": {
     "psh_lsass_memory_dump_comsvcs": {
-      "otrf_id": "SDWIN-201018195009",
-      "otrf_technique": "T1003.001",
+      "source": "OTRF SDWIN-201018195009",
+      "published_technique": "T1003.001",
       "rules_with_tp": [
         "WIN-002",
         "WIN-003"
       ],
-      "rules_mapped_to_otrf_technique": [
+      "rules_with_fp": [],
+      "rules_mapped_to_published_technique": [
         "WIN-002",
         "WIN-003"
       ]
     },
     "empire_mimikatz_logonpasswords": {
-      "otrf_id": "SDWIN-190518202151",
-      "otrf_technique": "T1003.001",
+      "source": "OTRF SDWIN-190518202151",
+      "published_technique": "T1003.001",
       "rules_with_tp": [
         "WIN-002"
       ],
-      "rules_mapped_to_otrf_technique": [
+      "rules_with_fp": [],
+      "rules_mapped_to_published_technique": [
         "WIN-002"
       ]
     },
     "empire_schtasks_creation_standard_user": {
-      "otrf_id": "SDWIN-190319024742",
-      "otrf_technique": "T1053.005",
+      "source": "OTRF SDWIN-190319024742",
+      "published_technique": "T1053.005",
       "rules_with_tp": [
         "WIN-005"
       ],
-      "rules_mapped_to_otrf_technique": [
+      "rules_with_fp": [],
+      "rules_mapped_to_published_technique": [
         "WIN-005"
       ]
     },
     "empire_psexec_dcerpc_tcp_svcctl": {
-      "otrf_id": "SDWIN-190518210652",
-      "otrf_technique": "T1021",
+      "source": "OTRF SDWIN-190518210652",
+      "published_technique": "T1021",
       "rules_with_tp": [
         "WIN-001",
         "WIN-004"
       ],
-      "rules_mapped_to_otrf_technique": []
+      "rules_with_fp": [],
+      "rules_mapped_to_published_technique": []
     },
     "empire_launcher_vbs": {
-      "otrf_id": "SDWIN-190518182022",
-      "otrf_technique": "T1059.005",
+      "source": "OTRF SDWIN-190518182022",
+      "published_technique": "T1059.005",
       "rules_with_tp": [
         "WIN-001",
         "WIN-006"
       ],
-      "rules_mapped_to_otrf_technique": [
+      "rules_with_fp": [],
+      "rules_mapped_to_published_technique": [
         "WIN-006"
       ]
     },
     "kerberos_pwd_spray_4771": {
-      "otrf_id": "EVTX-ATTACK-SAMPLES",
-      "otrf_technique": "T1110.003",
+      "source": "EVTX-ATTACK-SAMPLES",
+      "published_technique": "T1110.003",
       "rules_with_tp": [
         "WIN-007"
       ],
-      "rules_mapped_to_otrf_technique": [
+      "rules_with_fp": [],
+      "rules_mapped_to_published_technique": [
         "WIN-007"
+      ]
+    },
+    "mdec_4769_kerberoast_low_encryption": {
+      "source": "EVTX-to-MITRE-Attack",
+      "published_technique": "T1558.003",
+      "rules_with_tp": [
+        "WIN-008"
+      ],
+      "rules_with_fp": [],
+      "rules_mapped_to_published_technique": [
+        "WIN-008"
+      ]
+    },
+    "mdec_4769_tgs_host_enumeration_bloodhound": {
+      "source": "EVTX-to-MITRE-Attack (negative control)",
+      "published_technique": "T1087",
+      "rules_with_tp": [],
+      "rules_with_fp": [],
+      "rules_mapped_to_published_technique": []
+    },
+    "mdec_4776_4625_local_bruteforce": {
+      "source": "EVTX-to-MITRE-Attack",
+      "published_technique": "T1110.001",
+      "rules_with_tp": [
+        "WIN-010"
+      ],
+      "rules_with_fp": [],
+      "rules_mapped_to_published_technique": [
+        "WIN-010"
+      ]
+    },
+    "mdec_4625_denied_account_restriction": {
+      "source": "EVTX-to-MITRE-Attack (negative control)",
+      "published_technique": "T1078",
+      "rules_with_tp": [],
+      "rules_with_fp": [],
+      "rules_mapped_to_published_technique": []
+    },
+    "splunk_t1558_003_unusual_kerberos_service_tickets": {
+      "source": "splunk/attack_data",
+      "published_technique": "T1558.003",
+      "rules_with_tp": [
+        "WIN-008",
+        "WIN-009"
+      ],
+      "rules_with_fp": [
+        "WIN-008"
+      ],
+      "rules_mapped_to_published_technique": [
+        "WIN-008",
+        "WIN-009"
+      ]
+    },
+    "splunk_t1110_003_purplesharp_invalid_users_ntlm": {
+      "source": "splunk/attack_data",
+      "published_technique": "T1110.003",
+      "rules_with_tp": [
+        "WIN-010",
+        "WIN-011"
+      ],
+      "rules_with_fp": [],
+      "rules_mapped_to_published_technique": [
+        "WIN-010",
+        "WIN-011"
+      ]
+    },
+    "splunk_t1110_003_purplesharp_valid_users_ntlm": {
+      "source": "splunk/attack_data",
+      "published_technique": "T1110.003",
+      "rules_with_tp": [
+        "WIN-010",
+        "WIN-011"
+      ],
+      "rules_with_fp": [],
+      "rules_mapped_to_published_technique": [
+        "WIN-010",
+        "WIN-011"
       ]
     }
   },
@@ -284,7 +425,463 @@
         "event_id": "172.16.66.1@2020-07-22T20:25:00.000Z",
         "dataset": "kerberos_pwd_spray_4771",
         "timestamp": "2020-07-22T20:29:36.414Z",
-        "evidence": "9 Kerberos failures on 9 accounts from 172.16.66.1, 2020-07-22T20:29:36.414Z to 2020-07-22T20:29:36.425Z",
+        "evidence": "failures 9, accounts 9 from 172.16.66.1, 2020-07-22T20:29:36.414Z to 2020-07-22T20:29:36.425Z",
+        "disposition": "TP"
+      }
+    ],
+    "WIN-008": [
+      {
+        "event_id": "422c6248e94e80dc02c7",
+        "dataset": "mdec_4769_kerberoast_low_encryption",
+        "timestamp": "2020-08-02T11:33:06.5234378Z",
+        "evidence": "4769 rootdc1.offsec.lan admmig@OFFSEC.LAN -> Svc-SQL-DB01 enc=0x17 from ::ffff:10.23.23.9",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "40836be5cb60ab8eb3ec",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604600Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbt3gt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "b8135052da24453fbfd9",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604600Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbt2gt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "647ded6340e2ae86267c",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604600Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> kr8btgt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "d4aceed8ccf53f370e8a",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604600Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> kr5btgt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "802f540932b1bd8297d7",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604600Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> kr6btgt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "8d01e9c1fd73bc7487d5",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604600Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> kr7btgt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "626b5a0cbc8f01344b62",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604600Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> kr68btgt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "a61913fe829271457b19",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604600Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krb8tgt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "887761ccd5429152d749",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604600Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krb7tgt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "5a078ff63d0b900d010f",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604600Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krb6tgt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "f4f4c2710aff3bfa851b",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604600Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krb5tgt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "ffad71114b5028f985df",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604600Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krb4tgt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "5e81ff810006a339a366",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604600Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> kr1btgt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "43657d04c46d2c7a0443",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604600Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> kr3btgt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "880da38956c8e856d539",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604600Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> k1rbtgt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "1d61c44ae2abd90167e0",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604810Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> kr1btgt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "0af0bca8034fe5a0fd05",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604800Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbt1gt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "ce03d63fc4524f62fab8",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604780Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbtgt1 enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "e9097ac8342b75a928b7",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604760Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> kr1btgt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "c2889be2e59706db3229",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604750Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> kr1btgt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "40a2bca3b23ae8128c46",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604740Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krb1tgt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "ce385744835cc2f87113",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604730Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbtg2t enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "8e0b1132eb42fe53f9c9",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604720Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> kr1btgt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "61633b807f4dd570df15",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604710Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbt1gt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "9d6f67b0dce31374dd84",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604690Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krb2tgt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "f9546eda3fd3e742d0bb",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604680Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> kr1btgt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "a3194188b7856e0e080e",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604670Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krb1tgt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "dc74136d679b17c47cb1",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604660Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbt1gt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "6034a5c1be7a811b3074",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604650Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krb1tgt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "c1557737c18e1055c699",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604640Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbtg2t enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "2c791406e0ca9a209f7b",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604630Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbt2gt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "9484fd8a3c68bf4344ed",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604620Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krb2tgt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "f7b1a35a5f2a1d08f0cf",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604610Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbt2gt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "140754574a9b2033b13d",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604609Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbt2gt enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "4d7777a08fafc7bc12fc",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604608Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbtg2t enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "2702b644d0f6f1d10d71",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604607Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbtgt5 enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "c901b3fd2fa888ca74c0",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604606Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbtgt2 enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "6406cd8a7bc62bb3dced",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604605Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbtgt3 enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "2f4368fae0826e00f01b",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604604Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbtgt2 enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "7f46538be9d294834244",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604603Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbtgt3 enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "110974397d2fd7fa97ed",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604602Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbtgt4 enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "12cc6a33e9326173d3e5",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604601Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbtgt3 enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "f6a50ec1bb0cfc2705f4",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817604600Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbtgt2 enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "5021a35b153772273d8b",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:24.036900200Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-DC$@ATTACKRANGE.LOCAL -> krbtg2t enc=0x17 from ::1",
+        "disposition": "FP"
+      },
+      {
+        "event_id": "e92ceef69d13358c183e",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-03T00:21:59.385043300Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-DC$@ATTACKRANGE.LOCAL -> krbtg2t enc=0x17 from ::1",
+        "disposition": "FP"
+      },
+      {
+        "event_id": "5db7c3fd602cebfcfaf9",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-03T02:04:34.632065600Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbtg2t enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "FP"
+      },
+      {
+        "event_id": "4a530d937b202717e8cb",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-03T09:24:05.886904400Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbtg1t enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "FP"
+      },
+      {
+        "event_id": "331ca9aaff85a03750ae",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-03T09:24:37.704106500Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-DC$@ATTACKRANGE.LOCAL -> krbtg1t enc=0x17 from ::1",
+        "disposition": "FP"
+      },
+      {
+        "event_id": "4a68f709139e82e8ad43",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-03T09:51:59.704001800Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-DC$@ATTACKRANGE.LOCAL -> krbtg9t enc=0x17 from ::1",
+        "disposition": "FP"
+      },
+      {
+        "event_id": "357a4b2cd5c6bf7340aa",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-03T11:01:38.834740300Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbtgt8 enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "FP"
+      },
+      {
+        "event_id": "2ffe2d6e49d31866a5a4",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-03T18:54:06.838974600Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbtgt7 enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "FP"
+      },
+      {
+        "event_id": "777da8e502672a256c8d",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-03T18:54:52.165446100Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-DC$@ATTACKRANGE.LOCAL -> krbtgt6 enc=0x17 from ::1",
+        "disposition": "FP"
+      },
+      {
+        "event_id": "d28f85055f0bdcdb6e1b",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-03T19:21:59.957754800Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-DC$@ATTACKRANGE.LOCAL -> krbtgt5 enc=0x17 from ::1",
+        "disposition": "FP"
+      },
+      {
+        "event_id": "8f6a7303ad6c7451362d",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-03T21:22:44.188691400Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbtgt4 enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "FP"
+      },
+      {
+        "event_id": "531f6978059816c3af63",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-04T04:24:07.805715800Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-2$@ATTACKRANGE.LOCAL -> krbtgt3 enc=0x17 from ::ffff:10.0.1.15",
+        "disposition": "FP"
+      },
+      {
+        "event_id": "9008f1ee7430eb867f30",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-04T04:25:06.207288400Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-DC$@ATTACKRANGE.LOCAL -> krbtgt2 enc=0x17 from ::1",
+        "disposition": "FP"
+      },
+      {
+        "event_id": "892c8a98c59331fccb07",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-04T04:51:59.167662600Z",
+        "evidence": "4769 ar-win-dc.attackrange.local AR-WIN-DC$@ATTACKRANGE.LOCAL -> krbtgt1 enc=0x17 from ::1",
+        "disposition": "FP"
+      }
+    ],
+    "WIN-009": [
+      {
+        "event_id": "10.0.1.15@2024-03-02T23:50:00.000Z",
+        "dataset": "splunk_t1558_003_unusual_kerberos_service_tickets",
+        "timestamp": "2024-03-02T23:54:04.817Z",
+        "evidence": "requests 43, services 24 from 10.0.1.15, 2024-03-02T23:54:04.817Z to 2024-03-02T23:54:04.817Z",
+        "disposition": "TP"
+      }
+    ],
+    "WIN-010": [
+      {
+        "event_id": "WIN@2023-09-25T20:35:00.000Z",
+        "dataset": "mdec_4776_4625_local_bruteforce",
+        "timestamp": "2023-09-25T20:39:50.822Z",
+        "evidence": "failures 16, accounts 2 from WIN, 2023-09-25T20:39:50.822Z to 2023-09-25T20:39:50.836Z",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "WIN-HOST-MVELAZ@2022-09-08T19:00:00.000Z",
+        "dataset": "splunk_t1110_003_purplesharp_invalid_users_ntlm",
+        "timestamp": "2022-09-08T19:03:49.876Z",
+        "evidence": "failures 50, accounts 50 from WIN-HOST-MVELAZ, 2022-09-08T19:03:49.876Z to 2022-09-08T19:03:50.057Z",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "WIN-HOST-MVELAZ@2022-09-08T17:05:00.000Z",
+        "dataset": "splunk_t1110_003_purplesharp_valid_users_ntlm",
+        "timestamp": "2022-09-08T17:05:57.179Z",
+        "evidence": "failures 50, accounts 50 from WIN-HOST-MVELAZ, 2022-09-08T17:05:57.179Z to 2022-09-08T17:05:57.819Z",
+        "disposition": "TP"
+      }
+    ],
+    "WIN-011": [
+      {
+        "event_id": "WIN-HOST-MVELAZ@2022-09-08T19:00:00.000Z",
+        "dataset": "splunk_t1110_003_purplesharp_invalid_users_ntlm",
+        "timestamp": "2022-09-08T19:03:49.877Z",
+        "evidence": "failures 50, accounts 50 from WIN-HOST-MVELAZ, 2022-09-08T19:03:49.877Z to 2022-09-08T19:03:50.057Z",
+        "disposition": "TP"
+      },
+      {
+        "event_id": "WIN-HOST-MVELAZ@2022-09-08T17:05:00.000Z",
+        "dataset": "splunk_t1110_003_purplesharp_valid_users_ntlm",
+        "timestamp": "2022-09-08T17:05:57.177Z",
+        "evidence": "failures 50, accounts 50 from WIN-HOST-MVELAZ, 2022-09-08T17:05:57.177Z to 2022-09-08T17:05:57.817Z",
         "disposition": "TP"
       }
     ]

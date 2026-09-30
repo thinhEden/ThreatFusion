@@ -44,6 +44,13 @@ SHA-256 hashes are recorded in `docs/benchmarks/windows_detection_report.json`.
 
 `EVTX_ATTACK_SAMPLES/` is git-ignored. It holds `kerberos_pwd_spray_4771.evtx` (69,632 bytes, SHA-256 `4a0a1c71…9ae11d`) from [EVTX-ATTACK-SAMPLES](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES) `Credential Access/`, downloaded on 2026-09-30. The repository is GPL-3.0, so the file is not redistributed here; download it to reproduce WIN-007. `tools/normalize_windows_events.py` reads `.evtx` with the built-in `Get-WinEvent`, so this step needs Windows. `tools/normalize_windows_events.py` converts the NXLog JSON to ECS and keeps the raw fields under `winlog.event_data`. The comsvcs capture has no time zone on `TimeCreated`, so it is treated as UTC for ordering only.
 
+## Windows Credential-Access Samples (Kerberoasting and NTLM Brute Force)
+
+Two folders, downloaded on 2026-10-01, cover the 4769 and 4625/4776 rules WIN-008 to WIN-011. Both licences allow redistribution, so the files are committed unmodified; `.gitattributes` stops line-ending conversion so their hashes stay stable.
+
+- `Windows_EVTX_CC0/`: four `.evtx` files from [EVTX-to-MITRE-Attack](https://github.com/mdecrevoisier/EVTX-to-MITRE-Attack) (CC0 1.0). One Kerberoasting request, one local password-guessing burst, and two negative controls: AES service-ticket enumeration by BloodHound and two isolated logon failures. Paths and hashes are in [its README](Windows_EVTX_CC0/README.md).
+- `Windows_Splunk_attack_data/`: three XmlWinEventLog exports from [splunk/attack_data](https://github.com/splunk/attack_data) (Apache-2.0, licence and paths in [NOTICE.md](Windows_Splunk_attack_data/NOTICE.md)). Two PurpleSharp NTLM spraying runs (50 invalid and 50 valid user names, each with 4625 on the host and 4776 on the domain controller) and one burst of RC4 service-ticket requests. That last capture requests tickets for names such as `kr1btgt` that a real KDC would reject, so it tests count logic only.
+
 ## SWaT Kaggle Mirror
 
 Local raw paths are configured in `swat_local.json`. The files come from Kaggle [`vishala28/swat-dataset-secure-water-treatment-system`](https://www.kaggle.com/datasets/vishala28/swat-dataset-secure-water-treatment-system) by Vishal Agrawal, created 2025-10-28, with a declared licence of CC0. Kaggle's public API reports these sizes:

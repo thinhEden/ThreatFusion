@@ -6,7 +6,7 @@
 | **ATT&CK** | Enterprise [T1566.001](https://attack.mitre.org/techniques/T1566/001/) Spearphishing Attachment, [T1566.002](https://attack.mitre.org/techniques/T1566/002/) Spearphishing Link, [T1204.002](https://attack.mitre.org/techniques/T1204/002/) Malicious File; ICS [T0865](https://attack.mitre.org/techniques/T0865/) Spearphishing Attachment, [T0863](https://attack.mitre.org/techniques/T0863/) User Execution |
 | **Roles** | SOC L1, SOC L2, email administrator, workstation owner, and the OT engineer if the host has OT access |
 
-The detections are WIN-006 (a script host spawning PowerShell) and WIN-001 (encoded PowerShell), both validated on OTRF data. The KQL hunting snippets below have not been run as saved searches (see [README](README.md)).
+The detections are WIN-006 (a script host spawning PowerShell) and WIN-001 (encoded PowerShell), both validated on OTRF data. The KQL hunting snippets below are saved in Kibana and were run against the public captures; see the [hunting validation](../benchmarks/hunting_query_validation.md). The captures hold no Office-launched process and no executable dropped in Downloads or Temp, so those two hunts are checked with control queries only.
 
 ## 1. Triage (DE.AE)
 

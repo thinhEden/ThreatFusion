@@ -10,7 +10,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT/'tools'))
 from attack_coverage import ENTERPRISE
-from normalize_windows_events import to_ecs, read_evtx
+from normalize_windows_events import to_ecs, read_evtx, read_capture
 
 
 class WindowsNormalizationTests(unittest.TestCase):
@@ -55,6 +55,38 @@ class WindowsNormalizationTests(unittest.TestCase):
         self.assertNotEqual(service['event']['id'], to_ecs(dict(raw, ImagePath='other'), 'c')['event']['id'])
 
 
+    def test_ecs_fields_used_by_playbook_hunting_queries(self):
+        failure = to_ecs({'@timestamp': 'x', 'EventID': 4625, 'Channel': 'Security', 'Hostname': 'WIN', 'TargetUserName': 'Admin',
+                          'IpAddress': '-', 'SubStatus': '0xc000006a'}, 'c')
+        self.assertEqual((failure['event']['category'], failure['event']['outcome'], failure['user']['name']),
+                         (['authentication'], 'failure', 'Admin'))
+        self.assertNotIn('source', failure)
+        ticket = to_ecs({'@timestamp': 'x', 'EventID': 4769, 'Channel': 'Security', 'Hostname': 'DC',
+                         'TargetUserName': 'admmig@OFFSEC.LAN', 'IpAddress': '::ffff:10.23.23.9', 'Status': '0x0'}, 'c')
+        self.assertEqual((ticket['source']['ip'], ticket['user'], ticket['event']['outcome']),
+                         ('10.23.23.9', {'name': 'admmig', 'domain': 'OFFSEC.LAN'}, 'success'))
+        drop = to_ecs({'@timestamp': 'x', 'EventID': 11, 'Channel': 'Microsoft-Windows-Sysmon/Operational', 'Hostname': 'WS',
+                       'TargetFilename': 'C:\\Users\\bob\\Downloads\\Invoice.HTA'}, 'c')
+        self.assertEqual(drop['file'], {'path': 'C:\\Users\\bob\\Downloads\\Invoice.HTA', 'name': 'Invoice.HTA', 'extension': 'hta'})
+        query = to_ecs({'@timestamp': 'x', 'EventID': 22, 'Channel': 'Microsoft-Windows-Sysmon/Operational', 'Hostname': 'WS',
+                        'QueryName': 'example.org'}, 'c')
+        self.assertEqual((query['dns']['question']['name'], query['event']['category']), ('example.org', ['network']))
+
+    def test_splunk_xml_log_reader(self):
+        line = ("<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><EventID>4776</EventID>"
+                "<TimeCreated SystemTime='2022-09-08T18:59:42.379857000Z'/><Channel>Security</Channel><Computer>dc.lab</Computer>"
+                "</System><EventData><Data Name='TargetUserName'>JZLBZIIN</Data><Data Name='Workstation'>WIN-HOST</Data>"
+                "<Data Name='Status'>0xc0000064</Data></EventData></Event>\n")
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'capture.log'
+            path.write_text(line, encoding='utf-8')
+            [document] = list(read_capture(path))
+        self.assertEqual((document['event']['code'], document['host']['name'], document['threatfusion']['dataset']),
+                         ('4776', 'dc.lab', 'capture'))
+        self.assertEqual((document['winlog']['event_data']['Workstation'], document['event']['outcome']), ('WIN-HOST', 'failure'))
+        self.assertEqual(document['@timestamp'], '2022-09-08T18:59:42.379857000Z')
+
+
 class WindowsRuleTests(unittest.TestCase):
     rules = json.loads((ROOT/'siem/elastic/windows_rules.json').read_text(encoding='utf-8'))
 
@@ -73,6 +105,22 @@ class WindowsRuleTests(unittest.TestCase):
         hits = {(rule, h['event_id']) for rule, rule_hits in report['hits'].items() for h in rule_hits}
         self.assertEqual(hits, set(triage))
         self.assertTrue(all(r['disposition'] in {'TP', 'FP'} and r['reason'] for r in triage.values()))
+
+    def test_hunting_queries_resolve_and_compare(self):
+        from validate_hunting_queries import compare, resolve
+        entries = json.loads((ROOT/'siem/elastic/hunting_queries.json').read_text(encoding='utf-8'))
+        self.assertEqual(len({e['id'] for e in entries}), len(entries))
+        for entry in entries:
+            query = resolve(entry['query'], entry.get('parameters'))
+            self.assertNotIn('<host', query, entry['id'])
+            self.assertIn(entry['language'], {'kql', 'eql'})
+            self.assertTrue(entry['expect'] or 'control' in entry or entry.get('note'), entry['id'])
+        with self.assertRaises(ValueError):
+            resolve('host.name: "<host>"', {})
+        self.assertTrue(compare({'a': 2}, {'a': 2}))
+        self.assertFalse(compare({'a': 2}, {'a': 2, 'b': 1}))
+        self.assertTrue(compare({'a': 2}, {'a': 6}, minimum=True))
+        self.assertFalse(compare({'a': 2}, {'a': 6, 'b': 1}, minimum=True))
 
     def test_enterprise_layer_is_valid(self):
         layer = json.loads((ROOT/'docs/attack/threatfusion_enterprise_layer.json').read_text(encoding='utf-8'))
