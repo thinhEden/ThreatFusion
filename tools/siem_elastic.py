@@ -206,6 +206,7 @@ def verify():
         'unknown_source': {'term': {'source.ip':'10.50.1.99'}},
         'dangerous_values': {'range': {'threatfusion.register_values':{'gt':60}}},
         'counterexample': {'term': {'threatfusion.case':'challenge'}},
+        'host_correlation': {'bool': {'filter': [{'term': {'threatfusion.variant':'bounded-host'}}, {'match_phrase': {'message':'correlation:HOST-OT-001'}}]}},
     }
     counts = {name:api(ES, '/threatfusion-alerts-*/_count', {'query':query}, 'POST')['count'] for name,query in queries.items()}
     try:

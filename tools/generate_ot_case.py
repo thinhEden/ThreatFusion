@@ -74,6 +74,13 @@ def generate(folder):
                 'value_min': 50, 'value_max': 60, 'start_utc': '2026-09-30T10:00:00Z',
                 'end_utc': '2026-09-30T10:10:00Z', 'max_commands': 60}]}
     (folder / 'policy.json').write_text(json.dumps(policy, indent=2))
+    # Constructed scenario: a real WIN-001 hit from OTRF (tools/benchmark_windows.py), re-timed and mapped to the
+    # engineering workstation. It is evidence input for the correlation variant, not ground truth.
+    (folder / 'host_alerts.csv').write_text(
+        'host_ip,timestamp,rule_id,techniques,host_name,evidence,provenance\n'
+        f'{ENGINEERING},2026-09-30T10:01:30Z,WIN-001,T1059.001,WORKSTATION6.theshire.local,'
+        '"OTRF empire_psexec_dcerpc_tcp_svcctl event c56f10bb25afa2f79b30 (2020-09-20T16:16:57Z)",'
+        '"Constructed: real detection re-timed and mapped to the lab engineering workstation"\n')
     (folder / 'lab_iocs.csv').write_text('type,value,severity,malware_family,description\nip,10.50.1.66,critical,Lab IOC,Offline exercise source; not a real malware IOC\n')
     for name, challenge in [('main', False), ('challenge', True)]:
         truth = create_capture(folder / f'{name}.pcap', specifications(challenge))

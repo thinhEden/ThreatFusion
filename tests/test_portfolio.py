@@ -57,6 +57,10 @@ class PortfolioTests(unittest.TestCase):
             self.assertEqual(main['peer-only']['metrics']['FN'],50)
             self.assertEqual(report['captures']['challenge']['bounded']['metrics']['FN'],5)
             self.assertEqual(main['bounded']['suppressed_candidates'],60)
+            # A host alert on the workstation at 10:01:30Z recovers the challenge and re-opens later maintenance writes.
+            challenge = report['captures']['challenge']
+            self.assertEqual((challenge['bounded-host']['metrics']['TP'], challenge['bounded-host']['metrics']['FN']), (5, 0))
+            self.assertEqual((main['bounded-host']['metrics']['TP'], main['bounded-host']['metrics']['FP']), (80, 54))
 
 
 if __name__ == '__main__':

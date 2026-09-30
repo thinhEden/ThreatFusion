@@ -1,0 +1,2 @@
+host_ip,timestamp,rule_id,techniques,host_name,evidence,provenance
+10.50.1.20,2026-09-30T10:01:30Z,WIN-001,T1059.001,WORKSTATION6.theshire.local,"OTRF empire_psexec_dcerpc_tcp_svcctl event c56f10bb25afa2f79b30 (2020-09-20T16:16:57Z)","Constructed: real detection re-timed and mapped to the lab engineering workstation"

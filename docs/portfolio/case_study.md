@@ -32,6 +32,6 @@ The independently defined commissioning ticket is CHG-OT-2026-001. It authorizes
 
 ## Counterexample and Scope
 
-challenge.pcap contains five malicious-intent lab commands from a simulated compromised engineering workstation that are indistinguishable from approved commands under this policy. Bounded context misses all five. Packet attributes and a maintenance ticket are insufficient to prove host/operator integrity. This is a documented failure, not a production safety guarantee.
+challenge.pcap contains five malicious-intent lab commands from a simulated compromised engineering workstation that are indistinguishable from approved commands under this policy. Bounded context misses all five. Packet attributes and a maintenance ticket are insufficient to prove host/operator integrity. This is a documented failure, not a production safety guarantee. With host evidence (bounded-host: WIN-001 on the workstation at 10:01:30Z, a constructed scenario from an OTRF detection), 5 of 5 are retained with correlation HOST-OT-001, and 54 approved maintenance writes after the alert return to review. See PB-03.
 
 The experiment changes only BR-001 treatment. It is not evidence of malware-family detection or improved neural model accuracy. Other detection sources and rules are never suppressed.

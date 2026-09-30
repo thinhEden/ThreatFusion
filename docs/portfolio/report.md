@@ -7,9 +7,11 @@ Paired evaluation on the same offline PCAP, fixed rule/IOC inputs and risk thres
 | main | baseline | 80 | 200 | 60 | 0 | 0.5714 | 1.0000 | 0.7273 | 0.2308 |
 | main | peer-only | 30 | 260 | 0 | 50 | 1.0000 | 0.3750 | 0.5455 | 0.0000 |
 | main | bounded | 80 | 260 | 0 | 0 | 1.0000 | 1.0000 | 1.0000 | 0.0000 |
+| main | bounded-host | 80 | 206 | 54 | 0 | 0.5970 | 1.0000 | 0.7477 | 0.2077 |
 | challenge | baseline | 5 | 0 | 0 | 0 | 1.0000 | 1.0000 | 1.0000 | 0.0000 |
 | challenge | peer-only | 0 | 0 | 0 | 5 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
 | challenge | bounded | 0 | 0 | 0 | 5 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
+| challenge | bounded-host | 5 | 0 | 0 | 0 | 1.0000 | 1.0000 | 1.0000 | 0.0000 |
 
 ## C++ Processing Measurements
 
@@ -17,12 +19,14 @@ All decoded request events are timed, including events without alerts. These bat
 
 | Main variant | Processing p50 ms | p95 ms | p99 ms |
 |---|---:|---:|---:|
-| baseline | 0.00250 | 0.00580 | 0.02230 |
-| peer-only | 0.00470 | 0.01250 | 0.03310 |
-| bounded | 0.00290 | 0.00620 | 0.01990 |
+| baseline | 0.00240 | 0.00540 | 0.00870 |
+| peer-only | 0.00320 | 0.00720 | 0.01290 |
+| bounded | 0.00290 | 0.00810 | 0.02130 |
+| bounded-host | 0.00270 | 0.00830 | 0.02250 |
 
 ## Limits
 
-Combined main + adversarial challenge Recall: baseline=1.0000, peer-only=0.3529, bounded=0.9412.
+Combined main + adversarial challenge Recall: baseline=1.0000, peer-only=0.3529, bounded=0.9412, bounded-host=1.0000.
+bounded-host adds one constructed host alert: a real OTRF WIN-001 detection (encoded PowerShell stager), re-timed to 10:01:30Z and mapped to the engineering workstation 10.50.1.20. Commands from that host in the following hour are retained whatever the ticket says. The recall gain shows the correlation logic working on a designed timeline; it is not a measured detection rate. The cost is 54 approved maintenance writes sent back to review, because a compromised workstation cannot vouch for its own session.
 The main capture tests explicit policy violations; the challenge tests malicious intent without a distinguishable policy violation. State both results. Zero main-capture FP is a controlled exercise outcome, not evidence of zero production false alarms.
 The peer-only variant is intentionally unsafe and used only as an ablation. UTC timestamps, complete register values and trusted authorization provenance are prerequisites. No PLC execution, identity verification or real malware corpus is represented.

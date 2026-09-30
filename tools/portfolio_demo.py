@@ -57,8 +57,10 @@ def run_variant(engine, folder, capture, variant):
                '--alerts', str(prefix)+'.alerts.csv', '--incidents', str(prefix)+'.incidents.csv',
                '--metrics', str(prefix)+'.unlabeled_metrics.txt', '--timings', str(prefix)+'.timings.csv']
     if variant != 'baseline':
-        command += ['--context', str(folder/'policy.json'), '--context-mode', variant,
+        command += ['--context', str(folder/'policy.json'), '--context-mode', variant.removesuffix('-host'),
                     '--context-audit', str(prefix)+'.audit.csv']
+    if variant == 'bounded-host':
+        command += ['--host-alerts', str(folder/'host_alerts.csv'), '--host-alert-window', '3600']
     started = time.perf_counter()
     result = subprocess.run(command, capture_output=True, text=True, check=True, timeout=120, cwd=ROOT)
     duration = time.perf_counter()-started
@@ -121,7 +123,10 @@ def case_study(folder, reports):
               '- Unauthorized source or unsafe value: escalate to the OT owner, preserve PCAP and endpoint evidence, and validate the process state. Coordinate isolation or rollback with operations and safety staff.',
               '- Exhausted quota/outside window: investigate ticket replay, stale authorization or compromised credentials; revoke the relevant authorization only after validation.', '',
               '## Counterexample and Scope', '',
-              'challenge.pcap contains five malicious-intent lab commands from a simulated compromised engineering workstation that are indistinguishable from approved commands under this policy. Bounded context misses all five. Packet attributes and a maintenance ticket are insufficient to prove host/operator integrity. This is a documented failure, not a production safety guarantee.', '',
+              'challenge.pcap contains five malicious-intent lab commands from a simulated compromised engineering workstation that are indistinguishable from approved commands under this policy. Bounded context misses all five. Packet attributes and a maintenance ticket are insufficient to prove host/operator integrity. This is a documented failure, not a production safety guarantee. '
+              f"With host evidence (bounded-host: WIN-001 on the workstation at 10:01:30Z, a constructed scenario from an OTRF detection), "
+              f"{reports['challenge']['bounded-host']['metrics']['TP']} of 5 are retained with correlation HOST-OT-001, and "
+              f"{reports['main']['bounded-host']['metrics']['FP']} approved maintenance writes after the alert return to review. See PB-03.", '',
               'The experiment changes only BR-001 treatment. It is not evidence of malware-family detection or improved neural model accuracy. Other detection sources and rules are never suppressed.']
     (folder/'case_study.md').write_text('\n'.join(lines)+'\n')
     (folder/'case_study.html').write_text('<!doctype html><html lang="en"><meta charset="utf-8"><title>Investigation Evidence</title><style>body{font:16px system-ui;margin:32px;color:#1c242e}pre{white-space:pre-wrap;line-height:1.7;font:15px monospace;max-width:1200px}</style><h1>OT Investigation Evidence</h1><a href="index.html">Back to experiment</a><pre>'+html.escape('\n'.join(lines))+'</pre></html>', encoding='utf-8')
@@ -144,12 +149,15 @@ def write_report(folder, report):
         timing=result['processing_ms']
         lines.append(f"| {variant} | {timing['p50']:.5f} | {timing['p95']:.5f} | {timing['p99']:.5f} |")
     combined = {}
-    for variant in ('baseline','peer-only','bounded'):
+    for variant in ('baseline','peer-only','bounded','bounded-host'):
         tp = sum(c[variant]['metrics']['TP'] for c in report['captures'].values())
         fn = sum(c[variant]['metrics']['FN'] for c in report['captures'].values())
         combined[variant] = tp/(tp+fn)
     lines += ['', '## Limits', '',
-              f"Combined main + adversarial challenge Recall: baseline={combined['baseline']:.4f}, peer-only={combined['peer-only']:.4f}, bounded={combined['bounded']:.4f}.",
+              f"Combined main + adversarial challenge Recall: baseline={combined['baseline']:.4f}, peer-only={combined['peer-only']:.4f}, bounded={combined['bounded']:.4f}, bounded-host={combined['bounded-host']:.4f}.",
+              'bounded-host adds one constructed host alert: a real OTRF WIN-001 detection (encoded PowerShell stager), re-timed to 10:01:30Z and mapped to the engineering workstation 10.50.1.20. '
+              'Commands from that host in the following hour are retained whatever the ticket says. The recall gain shows the correlation logic working on a designed timeline; it is not a measured detection rate. '
+              f"The cost is {report['captures']['main']['bounded-host']['metrics']['FP']} approved maintenance writes sent back to review, because a compromised workstation cannot vouch for its own session.",
               'The main capture tests explicit policy violations; the challenge tests malicious intent without a distinguishable policy violation. State both results. Zero main-capture FP is a controlled exercise outcome, not evidence of zero production false alarms.',
               'The peer-only variant is intentionally unsafe and used only as an ablation. UTC timestamps, complete register values and trusted authorization provenance are prerequisites. No PLC execution, identity verification or real malware corpus is represented.']
     (folder/'report.md').write_text('\n'.join(lines)+'\n')
@@ -173,7 +181,7 @@ def main():
     for capture in ('main','challenge'):
         report['pcap_sha256'][capture] = hashlib.sha256((folder/f'{capture}.pcap').read_bytes()).hexdigest()
         report['captures'][capture] = {variant:run_variant(engine,folder,capture,variant)
-                                       for variant in ('baseline','peer-only','bounded')}
+                                       for variant in ('baseline','peer-only','bounded','bounded-host')}
     if args.siem:
         setup()
         ingest(sorted(folder.glob('*.ecs.jsonl')))
