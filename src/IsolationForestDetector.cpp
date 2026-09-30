@@ -6,6 +6,7 @@
 #include <cmath>
 #include <limits>
 #include <numeric>
+#include <stdexcept>
 
 namespace threatfusion {
 
@@ -154,6 +155,10 @@ void IsolationForestDetector::train(const std::vector<Event>& events, int treeCo
         sampleSize_ = static_cast<int>(points.size());
         return;
     }
+    featureDim_ = points.front().size();
+    for (const auto& point : points) {
+        if (point.size() != featureDim_) throw std::runtime_error("Inconsistent baseline feature dimensions");
+    }
     sampleSize_ = static_cast<int>(std::min<std::size_t>(points.size(), 256));
 
     std::mt19937 rng(1337);
@@ -184,19 +189,22 @@ double IsolationForestDetector::pathLength(const Tree& tree, const std::vector<d
     return depth;
 }
 
-std::vector<Detection> IsolationForestDetector::evaluate(const Event& event) const {
-    std::vector<Detection> detections;
-    if (empty()) {
-        return detections;
-    }
-
+double IsolationForestDetector::anomalyScore(const Event& event) const {
+    if (empty()) return 0.0;
     const auto point = features(event);
+    if (point.size() != featureDim_) throw std::runtime_error("Event feature dimensions do not match Isolation Forest baseline");
     double totalPath = 0.0;
     for (const auto& tree : trees_) {
         totalPath += pathLength(tree, point);
     }
     const auto avgPath = totalPath / static_cast<double>(trees_.size());
-    const auto score = std::pow(2.0, -avgPath / std::max(0.0001, cFactor(sampleSize_)));
+    return std::pow(2.0, -avgPath / std::max(0.0001, cFactor(sampleSize_)));
+}
+
+std::vector<Detection> IsolationForestDetector::evaluate(const Event& event) const {
+    std::vector<Detection> detections;
+    if (empty()) return detections;
+    const auto score = anomalyScore(event);
 
     if (score >= 0.55) {
         detections.push_back({

@@ -1,19 +1,13 @@
 #include "threatfusion/DataIngestion.h"
 
 #include "threatfusion/Csv.h"
+#include "threatfusion/Process.h"
+#include "third_party/nlohmann/json.hpp"
 
-#include <array>
-#include <cstdio>
+#include <cmath>
+#include <limits>
 #include <fstream>
 #include <stdexcept>
-
-#ifdef _WIN32
-#define POPEN _popen
-#define PCLOSE _pclose
-#else
-#define POPEN popen
-#define PCLOSE pclose
-#endif
 
 namespace threatfusion {
 
@@ -46,95 +40,6 @@ static std::vector<Event> loadCsvEvents(const std::string& path) {
     return events;
 }
 
-static std::string jsonValue(const std::string& line, const std::string& key) {
-    const auto pattern = "\"" + key + "\"";
-    auto keyPos = line.find(pattern);
-    if (keyPos == std::string::npos) {
-        return "";
-    }
-    auto colon = line.find(':', keyPos + pattern.size());
-    if (colon == std::string::npos) {
-        return "";
-    }
-    auto valueStart = line.find_first_not_of(" \t", colon + 1);
-    if (valueStart == std::string::npos) {
-        return "";
-    }
-
-    if (line[valueStart] == '"') {
-        ++valueStart;
-        auto valueEnd = line.find('"', valueStart);
-        if (valueEnd == std::string::npos) {
-            return "";
-        }
-        return line.substr(valueStart, valueEnd - valueStart);
-    }
-
-    auto valueEnd = line.find_first_of(",}", valueStart);
-    if (valueEnd == std::string::npos) {
-        valueEnd = line.size();
-    }
-    return trim(line.substr(valueStart, valueEnd - valueStart));
-}
-
-static int jsonInt(const std::string& line, const std::string& key, int fallback = 0) {
-    const auto value = jsonValue(line, key);
-    if (value.empty()) {
-        return fallback;
-    }
-    return std::stoi(value);
-}
-
-static double jsonDouble(const std::string& line, const std::string& key, double fallback = 0.0) {
-    const auto value = jsonValue(line, key);
-    if (value.empty()) {
-        return fallback;
-    }
-    try {
-        return std::stod(value);
-    } catch (...) {
-        return fallback;
-    }
-}
-
-// Parse "extra_features":[0.1,0.2,...] JSON array into a vector<double>.
-static std::vector<double> jsonDoubleArray(const std::string& line, const std::string& key) {
-    std::vector<double> result;
-    const auto pattern = "\"" + key + "\"";
-    auto keyPos = line.find(pattern);
-    if (keyPos == std::string::npos) {
-        return result;
-    }
-    auto bracketStart = line.find('[', keyPos);
-    if (bracketStart == std::string::npos) {
-        return result;
-    }
-    auto bracketEnd = line.find(']', bracketStart);
-    if (bracketEnd == std::string::npos) {
-        return result;
-    }
-    auto content = line.substr(bracketStart + 1, bracketEnd - bracketStart - 1);
-    // Split by commas and parse doubles
-    std::string::size_type pos = 0;
-    while (pos < content.size()) {
-        auto commaPos = content.find(',', pos);
-        auto token = (commaPos == std::string::npos)
-            ? content.substr(pos)
-            : content.substr(pos, commaPos - pos);
-        // Trim whitespace
-        auto start = token.find_first_not_of(" \t");
-        if (start != std::string::npos) {
-            try {
-                result.push_back(std::stod(token.substr(start)));
-            } catch (...) {
-                result.push_back(0.0);
-            }
-        }
-        if (commaPos == std::string::npos) break;
-        pos = commaPos + 1;
-    }
-    return result;
-}
 
 static std::vector<Event> loadJsonlEvents(const std::string& path) {
     std::ifstream file(path);
@@ -148,47 +53,69 @@ static std::vector<Event> loadJsonlEvents(const std::string& path) {
         if (trim(line).empty()) {
             continue;
         }
-        Event event;
-        event.id = jsonValue(line, "id");
-        event.timestamp = jsonValue(line, "timestamp");
-        event.srcIp = jsonValue(line, "src_ip");
-        event.dstIp = jsonValue(line, "dst_ip");
-        event.protocol = jsonValue(line, "protocol");
-        event.functionCode = jsonInt(line, "function_code", -1);
-        event.assetRole = jsonValue(line, "asset_role");
-        event.payloadHash = jsonValue(line, "payload_hash");
-        event.payloadPath = jsonValue(line, "payload_path");
-        event.bytes = jsonInt(line, "bytes", 0);
-        event.action = jsonValue(line, "action");
-        event.label = jsonValue(line, "label");
-        event.extraFeatures = jsonDoubleArray(line, "extra_features");
-        events.push_back(event);
+        events.push_back(parseJsonEvent(line));
     }
     return events;
 }
 
-static std::string quote(const std::string& value) {
-    return "\"" + value + "\"";
+Event parseJsonEvent(const std::string& line) {
+    const auto data = nlohmann::json::parse(line);
+    if (!data.is_object()) throw std::runtime_error("Event must be a JSON object");
+    auto integer = [&](const char* key, int fallback) {
+        if (!data.contains(key)) return fallback;
+        const auto& value = data.at(key);
+        if (!value.is_number_integer()) throw std::runtime_error(std::string("Integer field required: ") + key);
+        if (value.is_number_unsigned() && value.get<unsigned long long>() > static_cast<unsigned long long>(std::numeric_limits<int>::max()))
+            throw std::runtime_error("Integer field out of range");
+        const auto parsed = value.get<long long>();
+        if (parsed < std::numeric_limits<int>::min() || parsed > std::numeric_limits<int>::max())
+            throw std::runtime_error("Integer field out of range");
+        return static_cast<int>(parsed);
+    };
+    Event event;
+    event.id = data.value("id", std::string{});
+    if (event.id.empty()) throw std::runtime_error("Event id is required");
+    event.timestamp = data.value("timestamp", std::string{});
+    event.srcIp = data.value("src_ip", std::string{});
+    event.dstIp = data.value("dst_ip", std::string{});
+    event.protocol = data.value("protocol", std::string{});
+    event.functionCode = integer("function_code", -1);
+    event.assetRole = data.value("asset_role", std::string{});
+    event.payloadHash = data.value("payload_hash", std::string{});
+    event.payloadPath = data.value("payload_path", std::string{});
+    event.bytes = integer("bytes", 0);
+    event.action = data.value("action", std::string{});
+    event.label = data.value("label", std::string{});
+    event.extraFeatures = data.value("extra_features", std::vector<double>{});
+    event.unitId = integer("unit_id", -1);
+    event.registerAddress = integer("register_address", -1);
+    event.registerCount = integer("register_count", -1);
+    if (data.contains("register_values")) {
+        if (!data.at("register_values").is_array()) throw std::runtime_error("Register values must be an array");
+        for (const auto& value : data.at("register_values")) {
+            if (!value.is_number_integer() || value.get<long long>() < 0 || value.get<long long>() > 65535)
+                throw std::runtime_error("Register values must be unsigned 16-bit integers");
+            event.registerValues.push_back(value.get<int>());
+        }
+    }
+    event.isRequest = data.value("is_request", false);
+    for (double feature : event.extraFeatures) {
+        if (!std::isfinite(feature)) throw std::runtime_error("Feature must be finite");
+    }
+    return event;
 }
 
-static std::string runCommand(const std::string& command) {
-    std::array<char, 2048> buffer{};
-    std::string output;
-#ifdef _WIN32
-    const auto shellCommand = "cmd /C " + quote(command);
-    FILE* pipe = POPEN(shellCommand.c_str(), "r");
-#else
-    FILE* pipe = POPEN(command.c_str(), "r");
-#endif
-    if (!pipe) {
-        return "";
-    }
-    while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe) != nullptr) {
-        output += buffer.data();
-    }
-    PCLOSE(pipe);
-    return output;
+std::string eventJson(const Event& event) {
+    return nlohmann::json{
+        {"id", event.id}, {"timestamp", event.timestamp}, {"src_ip", event.srcIp},
+        {"dst_ip", event.dstIp}, {"protocol", event.protocol}, {"function_code", event.functionCode},
+        {"asset_role", event.assetRole}, {"payload_hash", event.payloadHash}, {"payload_path", event.payloadPath},
+        {"bytes", event.bytes}, {"action", event.action}, {"label", event.label},
+        {"extra_features", event.extraFeatures}, {"unit_id", event.unitId},
+        {"register_address", event.registerAddress}, {"register_count", event.registerCount}, {"register_values", event.registerValues},
+        {"is_request", event.isRequest}}.dump();
 }
+
 
 static int firstFunctionCode(const std::vector<std::string>& columns) {
     for (std::size_t i = 5; i <= 9 && i < columns.size(); ++i) {
@@ -236,14 +163,13 @@ static std::string inferAssetRole(const std::string& protocol) {
     return "unknown";
 }
 
-static std::vector<Event> loadPcapEvents(const std::string& path, const std::string& tsharkPath) {
-    const auto command =
-        quote(tsharkPath) + " -r " + quote(path) +
-        " -T fields -E separator=, -E quote=d -E occurrence=f"
-        " -e frame.number -e frame.time_epoch -e ip.src -e ip.dst -e _ws.col.Protocol"
-        " -e modbus.func_code -e dnp3.al.func -e 104asdu.typeid -e opcua.transport.type -e bacapp.type -e frame.len";
-
-    const auto output = runCommand(command);
+static std::vector<Event> loadPcapEvents(const std::string& path, const std::string& tsharkPath, const std::string& filter) {
+    std::vector<std::string> arguments = {"-r", path, "-T", "fields", "-E", "separator=,", "-E", "quote=d", "-E", "occurrence=a"};
+    if (!filter.empty()) { arguments.push_back("-Y"); arguments.push_back(filter); }
+    for (const auto& field : {"frame.number", "frame.time_epoch", "ip.src", "ip.dst", "_ws.col.Protocol", "modbus.func_code",
+         "dnp3.al.func", "104asdu.typeid", "opcua.transport.type", "bacapp.type", "frame.len", "mbtcp.unit_id",
+         "modbus.reference_num", "modbus.regval_uint16", "tcp.dstport", "modbus.word_cnt"}) { arguments.push_back("-e"); arguments.push_back(field); }
+    const auto output = processOutput(tsharkPath, arguments);
     if (output.empty()) {
         throw std::runtime_error("No PCAP events parsed. Is tshark installed and in PATH?");
     }
@@ -267,7 +193,14 @@ static std::vector<Event> loadPcapEvents(const std::string& path, const std::str
         event.assetRole = inferAssetRole(event.protocol);
         event.payloadHash = "";
         event.bytes = columns.size() > 10 ? safeInt(columns[10], 0) : 0;
-        event.action = "observed";
+        event.unitId = columns.size() > 11 ? safeInt(columns[11], -1) : -1;
+        event.registerAddress = columns.size() > 12 ? safeInt(columns[12], -1) : -1;
+        if (columns.size() > 13 && !columns[13].empty()) {
+            for (const auto& value : split(columns[13], ',')) event.registerValues.push_back(safeInt(value, -1));
+        }
+        event.isRequest = columns.size() > 14 && columns[14] == "502";
+        event.registerCount = event.functionCode == 6 ? 1 : columns.size() > 15 ? safeInt(columns[15], -1) : -1;
+        event.action = event.isRequest ? "request" : "observed";
         event.label = "";
         events.push_back(event);
     }
@@ -283,7 +216,7 @@ std::vector<Event> loadEvents(const std::string& path, const IngestionOptions& o
         return loadJsonlEvents(path);
     }
     if (normalized == "pcap") {
-        return loadPcapEvents(path, options.tsharkPath);
+        return loadPcapEvents(path, options.tsharkPath, options.pcapFilter);
     }
     throw std::runtime_error("Unsupported event format: " + options.format);
 }

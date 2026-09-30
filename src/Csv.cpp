@@ -177,4 +177,32 @@ void writeCsv(const std::string& path,
     }
 }
 
+void writeCsvRow(std::ostream& stream, const std::vector<std::string>& row) {
+    for (std::size_t i = 0; i < row.size(); ++i) {
+        if (i) stream << ',';
+        stream << escapeCsv(row[i]);
+    }
+    stream << '\n';
+    if (!stream) throw std::runtime_error("Cannot write CSV row");
+}
+
+void appendCsv(const std::string& path, const std::vector<std::string>& headers,
+               const std::vector<std::string>& row) {
+    ensureParentDirectory(path);
+    std::ifstream existing(path, std::ios::binary | std::ios::ate);
+    const bool needsHeader = !existing || existing.tellg() == 0;
+    existing.close();
+    std::ofstream file(path, std::ios::app);
+    if (!file) throw std::runtime_error("Cannot append CSV: " + path);
+    auto writeRow = [&](const std::vector<std::string>& fields) {
+        for (std::size_t i = 0; i < fields.size(); ++i) {
+            if (i) file << ',';
+            file << escapeCsv(fields[i]);
+        }
+        file << '\n';
+    };
+    if (needsHeader) writeRow(headers);
+    writeRow(row);
+}
+
 } // namespace threatfusion

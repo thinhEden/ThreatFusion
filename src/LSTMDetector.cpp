@@ -5,16 +5,21 @@
 #include <cmath>
 #include <iostream>
 #include <numeric>
+#include <cstdint>
+#include <fstream>
+#include <stdexcept>
+#include "third_party/nlohmann/json.hpp"
 
 #ifdef USE_LIBTORCH
 #include <torch/script.h>
-#include <torch/torch.h>
+#include <ATen/Parallel.h>
 #endif
 
 namespace threatfusion {
 
 // Helper encoders matching Isolation Forest features
 static double hashUnit(const std::string &value) {
+  if (value.empty()) return 0.0;
   uint64_t hash = 14695981039346656037ull;
   for (unsigned char c : value) {
     hash ^= static_cast<uint64_t>(c);
@@ -88,12 +93,16 @@ LSTMDetector::~LSTMDetector() {
 }
 
 bool LSTMDetector::loadModel(const std::string &modelPath) {
+  flowWindows_.clear();
+  featureDimSet_ = false;
+  modelLoaded_ = false;
+  simulated_ = modelPath == "simulated";
   modelPath_ = modelPath;
   if (modelPath.empty()) {
     return false;
   }
 
-  if (modelPath == "simulated") {
+  if (simulated_) {
     std::cout << "[LSTMDetector] Running LSTM/Autoencoder in simulated mode.\n";
     modelLoaded_ = true;
     return true;
@@ -101,8 +110,22 @@ bool LSTMDetector::loadModel(const std::string &modelPath) {
 
 #ifdef USE_LIBTORCH
   try {
+    at::set_num_threads(1);
+    std::ifstream metadataFile(modelPath + ".json");
+    if (metadataFile) {
+      const auto metadata = nlohmann::json::parse(metadataFile);
+      windowSize_ = metadata.at("window_size").get<int>();
+      featureDim_ = metadata.at("feature_count").get<int>();
+      anomalyThreshold_ = metadata.value("anomaly_threshold", 0.003);
+      if (windowSize_ < 1 || featureDim_ < 7 || anomalyThreshold_ <= 0)
+        throw std::runtime_error("Invalid model metadata");
+      featureDimSet_ = true;
+    }
     auto *module = new torch::jit::script::Module();
-    *module = torch::jit::load(modelPath);
+    try { *module = torch::jit::load(modelPath, torch::kCPU); }
+    catch (...) { delete module; throw; }
+    module->eval();
+    delete static_cast<torch::jit::script::Module *>(torchModule_);
     torchModule_ = module;
     modelLoaded_ = true;
     std::cout << "[LSTMDetector] Loaded TorchScript model from: " << modelPath
@@ -115,12 +138,9 @@ bool LSTMDetector::loadModel(const std::string &modelPath) {
     return false;
   }
 #else
-  // Simulated load for prototyping
-  std::cout << "[LSTMDetector] Warning: LibTorch is not enabled. Running "
-               "LSTM/Autoencoder in simulated mode.\n";
-  std::cout << "[LSTMDetector] Model path registered: " << modelPath << "\n";
-  modelLoaded_ = true;
-  return true;
+  std::cerr << "[LSTMDetector] Real model requires a USE_LIBTORCH build. "
+               "Use --lstm simulated explicitly for a lab proxy.\n";
+  return false;
 #endif
 }
 
@@ -145,6 +165,7 @@ std::vector<double> LSTMDetector::extractFeatures(const Event &event) const {
 }
 
 std::vector<Detection> LSTMDetector::evaluate(const Event &event) {
+  lastError_.reset();
   std::vector<Detection> detections;
   if (!modelLoaded_) {
     return detections;
@@ -157,6 +178,8 @@ std::vector<Detection> LSTMDetector::evaluate(const Event &event) {
     featureDim_ = static_cast<int>(currentFeatures.size());
     featureDimSet_ = true;
   }
+  if (currentFeatures.size() != static_cast<std::size_t>(featureDim_))
+    throw std::runtime_error("LSTM event feature dimensions do not match model");
 
   auto &window = flowWindows_[event.srcIp];
 
@@ -175,6 +198,7 @@ std::vector<Detection> LSTMDetector::evaluate(const Event &event) {
 
 #ifdef USE_LIBTORCH
   if (torchModule_ != nullptr) {
+    c10::InferenceMode inferenceGuard;
     auto *module = static_cast<torch::jit::script::Module *>(torchModule_);
 
     // 1. Flatten window features
@@ -198,14 +222,16 @@ std::vector<Detection> LSTMDetector::evaluate(const Event &event) {
       auto outputTensor = module->forward(inputs).toTensor();
 
       // 4. Calculate Mean Squared Error (MSE) reconstruction loss
-      auto loss = torch::mse_loss(inputTensor, outputTensor);
+      if (inputTensor.sizes() != outputTensor.sizes())
+        throw std::runtime_error("Model output shape must match event window");
+      auto loss = (inputTensor - outputTensor).square().mean();
       reconstructionError = loss.item<double>();
     } catch (const std::exception &e) {
-      std::cerr << "[LSTMDetector] Inference error: " << e.what() << "\n";
-      return detections;
+      throw std::runtime_error(std::string("LSTM inference failed: ") + e.what());
     }
   }
-#else
+#endif
+  if (simulated_) {
   // Simulated Reconstruction Error proxy
   // Calculate variance of the features in the window
   // High variance in protocol/function codes in a short window represents an
@@ -226,7 +252,8 @@ std::vector<Detection> LSTMDetector::evaluate(const Event &event) {
 
   // Normalize proxy error to threshold range
   reconstructionError = std::min(0.95, varianceSum * 1.5);
-#endif
+  }
+  lastError_ = reconstructionError;
 
   // Flag anomalies
   if (reconstructionError >= anomalyThreshold_) {

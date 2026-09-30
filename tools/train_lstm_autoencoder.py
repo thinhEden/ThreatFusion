@@ -101,87 +101,81 @@ if HAS_TORCH:
             
             return decoded
 
-def main():
-    parser = argparse.ArgumentParser(description="Train LSTM Autoencoder on normalized ThreatFusion events")
-    parser.add_argument("--input", required=True, help="Path to normalized JSONL events file")
-    parser.add_argument("--epochs", type=int, default=10, help="Number of epochs to train")
-    parser.add_argument("--batch-size", type=int, default=64, help="Batch size")
-    parser.add_argument("--window-size", type=int, default=10, help="Sliding window size")
-    parser.add_argument("--output", default="build/model_lstm_ae.pt", help="Path to output JIT module file")
-    args = parser.parse_args()
-
-    if not HAS_TORCH:
-        print("Error: PyTorch is required to run this script. Please install it using: pip install torch numpy")
-        return
-
-    if not os.path.exists(args.input):
-        print(f"Error: Input file '{args.input}' not found.")
-        return
-
-    print("Loading events and extracting features...")
-    features_list = []
-    
-    with open(args.input, "r", encoding="utf-8") as f:
-        for line in f:
-            if not line.strip():
-                continue
-            event = json.loads(line)
-            # We train the Autoencoder ONLY on benign/normal data to learn normal behavior
-            if event.get("label", "benign") == "benign":
-                features = extract_features(event)
-                features_list.append(features)
-
-    if len(features_list) < args.window_size * 2:
-        print(f"Error: Not enough benign events ({len(features_list)}) to train with window size {args.window_size}.")
-        return
-
-    print(f"Extracted features from {len(features_list)} benign events.")
-    data = np.array(features_list, dtype=np.float32)
-
-    # Build sliding windows
+def make_windows(events, window_size):
+    from collections import defaultdict, deque
+    flows = defaultdict(lambda: deque(maxlen=window_size))
     windows = []
-    for i in range(len(data) - args.window_size + 1):
-        windows.append(data[i : i + args.window_size])
-    
-    windows = np.array(windows, dtype=np.float32)
-    print(f"Created {len(windows)} sliding windows of shape {windows.shape[1:]}.")
+    for event in events:
+        key = event.get("src_ip", "")
+        if event.get("label") != "benign":
+            flows[key].clear()
+            continue
+        flows[key].append(extract_features(event))
+        if len(flows[key]) == window_size:
+            windows.append(list(flows[key]))
+    if not windows:
+        raise ValueError("Not enough contiguous benign events for training")
+    return np.asarray(windows, dtype=np.float32)
 
-    # Convert to PyTorch tensors
-    dataset = torch.tensor(windows)
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
 
-    # Initialize model
-    model = LSTMAutoencoder(seq_len=args.window_size, no_features=data.shape[1], latent_dim=8)
-    criterion = nn.MSELoss()
+def train_model(events, output, epochs=5, window_size=10, batch_size=64, seed=1337):
+    if not HAS_TORCH:
+        raise RuntimeError("Install tools/requirements-research.txt to train a real model")
+    torch.set_num_threads(1)
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    torch.use_deterministic_algorithms(True)
+    windows = make_windows(events, window_size)
+    dataset = torch.from_numpy(windows)
+    generator = torch.Generator().manual_seed(seed)
+    loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size,
+                                        shuffle=True, generator=generator)
+    model = LSTMAutoencoder(window_size, windows.shape[2])
     optimizer = optim.Adam(model.parameters(), lr=0.001)
-
-    print("Training LSTM Autoencoder...")
-    model.train()
-    for epoch in range(1, args.epochs + 1):
-        epoch_loss = 0.0
-        for batch in dataloader:
+    losses = []
+    for epoch in range(epochs):
+        model.train()
+        total = 0.0
+        for batch in loader:
             optimizer.zero_grad()
-            output = model(batch)
-            loss = criterion(output, batch)
+            loss = nn.functional.mse_loss(model(batch), batch)
             loss.backward()
             optimizer.step()
-            epoch_loss += loss.item() * batch.size(0)
-            
-        print(f"Epoch {epoch}/{args.epochs} - Loss: {epoch_loss / len(windows):.6f}")
-
-    print("Training complete. Exporting model to TorchScript JIT format...")
+            total += loss.item() * len(batch)
+        losses.append(total / len(dataset))
+        print(f"epoch={epoch + 1} loss={losses[-1]:.8f}", flush=True)
     model.eval()
-    
-    # Trace the model with a representative dummy input
-    dummy_input = torch.randn(1, args.window_size, data.shape[1])
-    try:
-        traced_module = torch.jit.trace(model, dummy_input)
-        os.makedirs(os.path.dirname(args.output), exist_ok=True)
-        traced_module.save(args.output)
-        print(f"Successfully saved JIT model to: {args.output}")
-        print("This file can now be loaded directly by the ThreatFusion C++ Engine!")
-    except Exception as e:
-        print(f"Failed to trace and export model: {e}")
+    from pathlib import Path
+    destination = Path(output)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    scripted = torch.jit.script(model)
+    scripted.save(str(destination))
+    metadata = {
+        "feature_encoding": "fnv1a64-v1", "feature_count": int(windows.shape[2]),
+        "window_size": window_size, "anomaly_threshold": 0.003,
+        "seed": seed, "epochs": epochs, "training_windows": len(windows),
+        "epoch_losses": losses, "torch_version": torch.__version__,
+        "flow_key": "src_ip",
+    }
+    Path(str(destination) + ".json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+    return metadata
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Train a deterministic LSTM Autoencoder on benign flow windows")
+    parser.add_argument("--input", required=True)
+    parser.add_argument("--epochs", type=int, default=5)
+    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--window-size", type=int, default=10)
+    parser.add_argument("--seed", type=int, default=1337)
+    parser.add_argument("--output", default="models/model_lstm_ae.pt")
+    args = parser.parse_args()
+    if min(args.epochs, args.batch_size, args.window_size) < 1:
+        parser.error("Training sizes must be positive")
+    with open(args.input, encoding="utf-8") as handle:
+        events = [json.loads(line) for line in handle if line.strip()]
+    train_model(events, args.output, args.epochs, args.window_size, args.batch_size, args.seed)
+
 
 if __name__ == "__main__":
     main()

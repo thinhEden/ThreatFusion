@@ -7,6 +7,7 @@
 #include <vector>
 #include <map>
 #include <deque>
+#include <optional>
 
 #ifdef USE_LIBTORCH
 namespace torch {
@@ -27,6 +28,7 @@ public:
     std::vector<Detection> evaluate(const Event& event);
     
     bool empty() const { return !modelLoaded_; }
+    std::optional<double> lastError() const { return lastError_; }
 
 private:
     std::vector<double> extractFeatures(const Event& event) const;
@@ -37,6 +39,8 @@ private:
     int featureDim_ = 7;       // Dimensionality D (updated dynamically if extraFeatures present)
     bool featureDimSet_ = false;
     double anomalyThreshold_ = 0.003;
+    std::optional<double> lastError_;
+    bool simulated_ = false;
 
     // Track sliding window of feature vectors per source IP
     std::map<std::string, std::deque<std::vector<double>>> flowWindows_;

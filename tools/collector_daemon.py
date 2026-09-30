@@ -1,105 +1,66 @@
+"""Replay normalized JSONL lazily over TCP with bounded connection retries."""
 import argparse
 import json
-import os
 import socket
 import time
 from datetime import datetime
+from pathlib import Path
 
-def parse_iso_timestamp(ts_str):
+
+def parse_iso_timestamp(value):
+    if not value:
+        return None
     try:
-        # e.g., "2015-12-22T16:00:00Z"
-        return datetime.strptime(ts_str.replace("Z", ""), "%Y-%m-%dT%H:%M:%S")
-    except Exception:
-        # Fallback to epoch float if it's zeek format
+        return datetime.fromisoformat(value.replace('Z', '+00:00')).timestamp()
+    except ValueError:
         try:
-            return datetime.fromtimestamp(float(ts_str))
-        except Exception:
+            return float(value)
+        except ValueError:
             return None
 
-def stream_events(file_path, host, port, rate, realtime_replay):
-    print(f"Starting Collector Daemon...")
-    print(f"Reading events from: {file_path}")
-    print(f"Target ThreatFusion Engine: {host}:{port}")
 
-    # Read all events first to prepare for replay if realtime mode is on
-    events = []
-    with open(file_path, "r", encoding="utf-8") as f:
-        for line in f:
-            if line.strip():
-                events.append(line.strip())
-
-    if not events:
-        print("No events found in file.")
-        return
-
-    print(f"Loaded {len(events)} events. Connecting to C++ Engine...")
-    
-    # Connect to C++ socket server (retry if server is not up yet)
-    s = None
-    while s is None:
+def stream_events(file_path, host, port, rate, realtime_replay, connect_timeout=30):
+    deadline = time.monotonic() + connect_timeout
+    connection = None
+    while connection is None:
         try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.connect((host, port))
-            print("Successfully connected to ThreatFusion Engine!")
-        except ConnectionRefusedError:
-            print("Connection refused. ThreatFusion Engine may not be running. Retrying in 3 seconds...")
-            s = None
-            time.sleep(3)
-        except Exception as e:
-            print(f"Connection failed: {e}. Retrying in 3 seconds...")
-            s = None
-            time.sleep(3)
+            connection = socket.create_connection((host, port), timeout=2)
+        except OSError:
+            if time.monotonic() >= deadline:
+                raise TimeoutError(f'Engine did not accept TCP connection at {host}:{port}')
+            time.sleep(.2)
+    previous = None
+    count = 0
+    with connection, Path(file_path).open(encoding='utf-8-sig') as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            event = json.loads(line)
+            current = parse_iso_timestamp(event.get('timestamp', ''))
+            if realtime_replay and previous is not None and current is not None:
+                time.sleep(min(max(current - previous, 0), 10))
+            elif not realtime_replay and count and rate > 0:
+                time.sleep(1 / rate)
+            connection.sendall((json.dumps(event, separators=(',', ':')) + '\n').encode('utf-8'))
+            previous = current
+            count += 1
+    print(f'Sent {count} events to {host}:{port}')
+    return count
 
-    last_event_time = None
-    try:
-        for index, event_str in enumerate(events):
-            # Parse event to log or determine timestamps
-            event = json.loads(event_str)
-            
-            # Send the line (adding newline delimiter)
-            s.sendall((event_str + "\n").encode("utf-8"))
-            
-            # Print streaming status
-            if (index + 1) % 1000 == 0 or index == len(events) - 1:
-                print(f"Sent {index + 1}/{len(events)} events.")
-
-            # Handle delay/pacing
-            if realtime_replay:
-                curr_ts = parse_iso_timestamp(event.get("timestamp", ""))
-                if last_event_time and curr_ts:
-                    delta = (curr_ts - last_event_time).total_seconds()
-                    if delta > 0:
-                        # Sleep up to 10 seconds max to prevent long periods of silence in lab
-                        sleep_time = min(delta, 10.0)
-                        time.sleep(sleep_time)
-                last_event_time = curr_ts
-            else:
-                # Fixed rate delay
-                if rate > 0:
-                    time.sleep(1.0 / rate)
-
-    except ConnectionResetError:
-        print("Error: Connection was reset by ThreatFusion Engine.")
-    except KeyboardInterrupt:
-        print("Streaming interrupted by user.")
-    finally:
-        s.close()
-        print("Collector Daemon stopped.")
 
 def main():
-    parser = argparse.ArgumentParser(description="ThreatFusion Python Collector Daemon - TCP Socket Streamer")
-    parser.add_argument("--input", required=True, help="Path to normalized JSONL event file")
-    parser.add_argument("--host", default="127.0.0.1", help="ThreatFusion Engine IP address")
-    parser.add_argument("--port", type=int, default=8080, help="ThreatFusion Engine TCP port")
-    parser.add_argument("--rate", type=float, default=10.0, help="Stream rate in events/second (if not in --realtime mode)")
-    parser.add_argument("--realtime", action="store_true", help="Replay events at their original speed using timestamps")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--input', required=True)
+    parser.add_argument('--host', default='127.0.0.1')
+    parser.add_argument('--port', type=int, default=8080)
+    parser.add_argument('--rate', type=float, default=10)
+    parser.add_argument('--realtime', action='store_true')
+    parser.add_argument('--connect-timeout', type=float, default=30)
     args = parser.parse_args()
+    if args.connect_timeout <= 0 or args.rate < 0 or not 1 <= args.port <= 65535:
+        parser.error('Invalid stream options')
+    stream_events(args.input, args.host, args.port, args.rate, args.realtime, args.connect_timeout)
 
-    if not os.path.exists(args.input):
-        print(f"Error: Input file '{args.input}' does not exist.")
-        return
 
-    stream_events(args.input, args.host, args.port, args.rate, args.realtime)
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
