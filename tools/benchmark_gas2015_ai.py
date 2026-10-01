@@ -29,6 +29,15 @@ CLIP = (-2.0, 3.0)
 DETECTORS = ('isolation_forest', 'lstm', 'hybrid')
 
 
+def incremental_coverage(truth, model_flags, simple_flags):
+    """Count detections beyond the union of both simple rules; category recall alone cannot show overlap."""
+    extra = np.asarray(model_flags, dtype=bool) & ~np.asarray(simple_flags, dtype=bool)
+    attacks = np.array([t['label'] == 'malicious' for t in truth])
+    return {'additional_TP': int(np.sum(extra & attacks)),
+            'additional_FP': int(np.sum(extra & ~attacks)),
+            'additional_TP_by_category': dict(Counter(t['category'] for t, hit in zip(truth, extra & attacks) if hit))}
+
+
 def fit_scaler(rows):
     """Min-max ranges from benign training packets; inter-arrival is log-scaled first."""
     scaler = {}
@@ -258,6 +267,9 @@ def main():
         flags.update({'envelope_state_review+' + name: rules['envelope_state_review'] | flags[name] for name in DETECTORS})
         flags.update({name + '_gated_by_envelope': flags[name] & ~gate for name in DETECTORS})
         result = {'seed': seed, 'training': training, 'calibration': calibration, 'processing_ms': timing,
+                  'incremental_over_simple_rules': {
+                      name: incremental_coverage(test_truth, flags[name], novelty['test'][0] | states['test'])
+                      for name in DETECTORS},
                   'threshold_free': {name: {'roc_auc': roc_auc(y, raw[name]), 'average_precision': average_precision(y, raw[name])}
                                      for name in DETECTORS},
                   'scopes': {}}
@@ -368,6 +380,15 @@ def render(report, args):
     lines += ['', f'Attacks are {prevalence(report):.3f} of test packets, which is the average precision of a detector with no skill.', '',
               '## All Packets (test)', '']
     lines += table('all_packets', ['range_rule', 'state_rule', 'range_rule+state_rule', *DETECTORS])
+    if all('incremental_over_simple_rules' in seed for seed in report['per_seed']):
+        lines += ['', '## Additional Packets Detected Beyond Both Simple Rules', '',
+                  'Lower recall in a category does not mean identical detections. These counts compare each model with '
+                  'the union of the range and state rules on all test packets, without retraining or changing thresholds.', '',
+                  '| Seed | Detector | Additional TP | Additional FP | Additional TP by category |', '|---|---|---:|---:|---|']
+        for seed in report['per_seed']:
+            for name, extra in seed['incremental_over_simple_rules'].items():
+                categories = ', '.join(f'{k} {v}' for k, v in sorted(extra['additional_TP_by_category'].items())) or 'none'
+                lines.append(f"| {seed['seed']} | {name} | {extra['additional_TP']} | {extra['additional_FP']} | {categories} |")
     lines += ['', 'NMRI and CMRI are response injections, so they only appear in this table.', '',
               '## Requests Only: AI Next to the OT Context (test)', '']
     lines += table('requests', ['baseline', 'envelope', 'envelope_state_review', 'range_rule', 'state_rule', *DETECTORS,
@@ -395,8 +416,8 @@ def render(report, args):
               '- The range and state rules assume training covered every legitimate operating point. In a plant, a new setpoint or '
               'state combination after commissioning is a false positive until the baseline is updated through change control.',
               '- Labels are per packet from the dataset; the response to an attack command is labelled as an attack.',
-              '- Combinations are decision-level unions or gates computed here. The engine risk scorer does not yet take calibrated '
-              'AI thresholds, so these rows are not what the deployed engine alerts on.']
+              '- Combinations are decision-level unions or gates computed here. The engine risk scorer does not implement '
+              'the offline union/gate decisions used here, so these rows are not what the deployed engine alerts on.']
     return '\n'.join(lines) + '\n'
 
 

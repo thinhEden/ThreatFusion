@@ -1916,6 +1916,32 @@
             }
           }
         }
+      },
+      "incremental_over_simple_rules": {
+        "isolation_forest": {
+          "additional_TP": 92,
+          "additional_FP": 383,
+          "additional_TP_by_category": {
+            "MSCI": 61,
+            "DoS": 5,
+            "MPCI": 26
+          }
+        },
+        "lstm": {
+          "additional_TP": 0,
+          "additional_FP": 332,
+          "additional_TP_by_category": {}
+        },
+        "hybrid": {
+          "additional_TP": 5,
+          "additional_FP": 318,
+          "additional_TP_by_category": {
+            "DoS": 2,
+            "NMRI": 1,
+            "MSCI": 1,
+            "MPCI": 1
+          }
+        }
       }
     },
     {
@@ -2399,6 +2425,30 @@
               "DoS": 0.0,
               "Recon": 0.0398
             }
+          }
+        }
+      },
+      "incremental_over_simple_rules": {
+        "isolation_forest": {
+          "additional_TP": 24,
+          "additional_FP": 127,
+          "additional_TP_by_category": {
+            "MSCI": 17,
+            "MPCI": 7
+          }
+        },
+        "lstm": {
+          "additional_TP": 0,
+          "additional_FP": 278,
+          "additional_TP_by_category": {}
+        },
+        "hybrid": {
+          "additional_TP": 5,
+          "additional_FP": 310,
+          "additional_TP_by_category": {
+            "DoS": 3,
+            "MSCI": 1,
+            "MPCI": 1
           }
         }
       }
@@ -2886,7 +2936,39 @@
             }
           }
         }
+      },
+      "incremental_over_simple_rules": {
+        "isolation_forest": {
+          "additional_TP": 64,
+          "additional_FP": 162,
+          "additional_TP_by_category": {
+            "MSCI": 55,
+            "DoS": 1,
+            "MPCI": 8
+          }
+        },
+        "lstm": {
+          "additional_TP": 10,
+          "additional_FP": 357,
+          "additional_TP_by_category": {
+            "DoS": 5,
+            "MPCI": 3,
+            "NMRI": 1,
+            "MSCI": 1
+          }
+        },
+        "hybrid": {
+          "additional_TP": 16,
+          "additional_FP": 353,
+          "additional_TP_by_category": {
+            "DoS": 8,
+            "MPCI": 6,
+            "NMRI": 1,
+            "MSCI": 1
+          }
+        }
       }
     }
-  ]
+  ],
+  "incremental_coverage_provenance": "Recomputed from the original saved test scores and fixed thresholds; no models retrained."
 }

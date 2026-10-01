@@ -8,9 +8,10 @@ Machine: Intel(R) Core(TM) i7-10750H CPU @ 2.60GHz, 12 logical CPUs, 15.9 GB RAM
 
 - `rules`: IOC correlation, 13 behaviour rules and ATT&CK annotation.
 - `rules+envelope`: plus the OT operating-envelope context and its audit trail.
-- `rules+envelope+if`: plus the new-peer/flow/function baseline and Isolation Forest (100 trees), trained at startup on 163,823 packets, with the threshold calibrated in the AI benchmark (0.6392).
+- `rules+envelope+if`: plus the new-peer/flow/function baseline and Isolation Forest (100 trees), trained at startup on the benign rows of a 163,823-packet labelled training input; malicious rows are excluded by the engine. The threshold is calibrated in the AI benchmark (0.6392).
 - `full`: plus the LSTM autoencoder through TorchScript (window 10, 23 features, calibrated loss threshold).
 - `full-default-if` (stream only): `full` with the engine's uncalibrated default Isolation Forest threshold of 0.55.
+- Before a new run, the default LSTM artifact is copied from the first evaluated seed and its metadata receives that seed's validation-calibrated loss threshold. A custom `--model` must provide calibrated metadata. On Linux, `psutil` samples live memory and `wait4` collects final CPU and peak RSS before the child is reaped.
 
 ## Batch Mode
 

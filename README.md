@@ -23,7 +23,7 @@ Legitimate engineering writes flood OT analysts with alerts. **Can operational c
 | Do the playbook hunting queries return what they claim? | The same captures and the lab OT alert index | 11 of 11 hunts match counts taken from raw fields, parsed by Kibana itself. Running them found 3 hunts that could only return zero because the normalizer lacked the ECS fields they use; that is fixed. | [Hunting validation](docs/benchmarks/hunting_query_validation.md) |
 | Does the C++ engine hold up under sustained load? | The Gas Pipeline 2015 test window replayed over TCP with every detector on | One hour at 1,000 events/s: 3.6 million events, none lost, memory flat (172.5 MB at the start, 172.4 MB at the end), 47% of one core. Measuring found four faults, now fixed: stream inference spun on every core, each alert reopened the log file, LSTM memory grew with every new source address, and an uncalibrated AI threshold undid the OT context. | [Engine performance](docs/benchmarks/engine_performance.md) |
 | Did the ML models learn attack behaviour? | MSU ModbusRTUfeatureSetsV2, byte-identical to the official archive | **No evidence.** A one-feature `TimeInterval` rule (F1 0.977-0.998) beats the evaluated models using all features. | [Data audit](docs/benchmarks/msu_data_audit.md) |
-| Does AI catch what the envelope misses, on data without shortcuts? | MSU New Gas Pipeline 2015, same time split, 3 seeds | **No.** Isolation Forest and the LSTM autoencoder reach ROC-AUC 0.61-0.68 and find 2.6-4.2% of attack packets at 1% FPR. Two parameter-free rules find 55% with a similar false-positive count (360), and beat the models on every attack category. | [AI on Gas Pipeline 2015](docs/benchmarks/gas2015_ai_report.md) |
+| Does AI add useful coverage beyond simple rules? | MSU New Gas Pipeline 2015, same time split, 3 seeds | Limited extra detections, weaker overall results. The models reach ROC-AUC 0.61-0.68 and find 2.6-4.2% of attack packets with thresholds targeting 1% benign-validation FPR. Two simple rules find 55% with 360 false positives. Isolation Forest adds 24-92 attack packets beyond their union across seeds. | [AI on Gas Pipeline 2015](docs/benchmarks/gas2015_ai_report.md) |
 
 The mapping inventory records ATT&CK IDs, confidence and rationale where the rule evidence supports them; BR-004 intentionally has no technique mapping. Public-data evidence distinguishes detections carrying the technique ID from indirect detections:
 
@@ -341,7 +341,7 @@ The envelope removes every false positive but misses all state-command injection
 
 ### Anomaly Detection on the Same Capture
 
-Does AI find what the envelope misses? The C++ Isolation Forest and the LSTM autoencoder (TorchScript in C++) are trained on benign packets from the same training window, with 23 packet, process and timing features. Every threshold is set at 1% FPR on benign validation packets, and three seeds retrain both models. Two parameter-free baselines use the same benign training data:
+Does AI find what the envelope misses? The C++ Isolation Forest and the LSTM autoencoder (TorchScript in C++) are trained on benign packets from the same training window, with 23 packet, process and timing features. Every threshold targets 1% FPR on benign validation packets, and three seeds retrain both models. Two parameter-free baselines use the same benign training data:
 
 - a range rule: an unseen function code, length or address, or any process value outside its training range;
 - a state rule: a mode/scheme/pump/solenoid combination never seen in benign training writes.
@@ -357,11 +357,11 @@ python tools/benchmark_gas2015_ai.py --engine build-libtorch/Release/threatfusio
 | Hybrid | 0.042 ± 0.006 | 327 ± 19 | 0.683 |
 | Range rule + state rule | **0.547** | 360 | n/a |
 
-**The models add nothing the simple rules miss.** No attack category is caught better by any model. Isolation Forest recovers 19% of MSCI requests at 390 false positives; the state rule recovers 39% at 358. Gating the models by the envelope removes their false positives and, with them, every MSCI detection. Many parameter injections change only a value that never varies in benign traffic; Isolation Forest cannot split on a constant feature, while an exact range check catches it. See the [report](docs/benchmarks/gas2015_ai_report.md).
+**The models perform worse overall, but their detections are not identical to the rules.** Isolation Forest adds 92, 24 and 64 attack packets beyond the range/state rule union for seeds 1337, 2024 and 7, including 61, 17 and 55 MSCI packets. Its mean MSCI request recall is 19% at 390 request false positives; the state rule reaches 39% at 358. Envelope gating removes all IF request false positives, while LSTM and hybrid retain 311 and 309 on average; all three lose their MSCI detections. Many parameter injections change a value constant in benign traffic, which Isolation Forest cannot split on but an exact range check detects. These results do not justify enabling the models by default. See the [report](docs/benchmarks/gas2015_ai_report.md).
 
 ### C++ Engine Performance
 
-The same 54,323 test packets drive batch, stream, source-cardinality and soak measurements. CPU and memory come from the OS for the engine process only; stream counters come from the engine's own `--stats` export.
+The same 54,323 test packets drive batch, stream, source-cardinality and soak measurements. CPU and memory come from the OS for the engine process only; stream counters come from the engine's own `--stats` export. Run the AI benchmark first: the performance runner automatically copies its first evaluated LSTM seed and applies that seed's benign-validation threshold to `lstm_perf.pt.json`. A custom `--model` must include its own calibrated metadata. Linux additionally needs `psutil` for live memory sampling; final CPU and peak RSS come from `wait4`.
 
 ```powershell
 python tools/benchmark_engine_performance.py --engine build-libtorch/Release/threatfusion.exe

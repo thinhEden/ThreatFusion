@@ -63,7 +63,9 @@ def ecs_fields(code, data):
         if user and user != '-':
             name, _, domain = user.partition('@')
             fields['user'] = {k: v for k, v in {'name': name, 'domain': domain or data.get('TargetDomainName')}.items() if v}
-        address = (data.get('IpAddress') or '').removeprefix('::ffff:')
+        address = data.get('IpAddress') or ''
+        if address.startswith('::ffff:'):
+            address = address[len('::ffff:'):]
         try:
             fields['source'] = {'ip': str(ipaddress.ip_address(address))}
         except ValueError:
@@ -137,19 +139,20 @@ EVENT_NS = '{http://schemas.microsoft.com/win/2004/08/events/event}'
 
 def read_xml_log(path):
     """Read a Splunk attack_data XmlWinEventLog export: one <Event> element per line."""
-    for line in Path(path).open(encoding='utf-8'):
-        if not line.strip():
-            continue
-        event = ElementTree.fromstring(line)
-        system = event.find(EVENT_NS + 'System')
-        raw = {'@timestamp': system.find(EVENT_NS + 'TimeCreated').get('SystemTime'),
-               'EventID': int(system.findtext(EVENT_NS + 'EventID')), 'Channel': system.findtext(EVENT_NS + 'Channel'),
-               'Hostname': system.findtext(EVENT_NS + 'Computer')}
-        data = event.find(EVENT_NS + 'EventData')
-        for item in (data if data is not None else []):
-            if item.get('Name'):
-                raw[item.get('Name')] = item.text
-        yield to_ecs(raw, Path(path).stem, 'windows.splunk_attack_data')
+    with Path(path).open(encoding='utf-8') as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            event = ElementTree.fromstring(line)
+            system = event.find(EVENT_NS + 'System')
+            raw = {'@timestamp': system.find(EVENT_NS + 'TimeCreated').get('SystemTime'),
+                   'EventID': int(system.findtext(EVENT_NS + 'EventID')), 'Channel': system.findtext(EVENT_NS + 'Channel'),
+                   'Hostname': system.findtext(EVENT_NS + 'Computer')}
+            data = event.find(EVENT_NS + 'EventData')
+            for item in (data if data is not None else []):
+                if item.get('Name'):
+                    raw[item.get('Name')] = item.text
+            yield to_ecs(raw, Path(path).stem, 'windows.splunk_attack_data')
 
 
 def read_capture(path):

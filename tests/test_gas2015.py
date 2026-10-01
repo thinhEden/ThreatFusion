@@ -78,6 +78,13 @@ class GasPipeline2015Tests(unittest.TestCase):
 
 
 class AnomalyBenchmarkHelperTests(unittest.TestCase):
+    def test_incremental_detections_are_compared_by_packet_not_category(self):
+        from benchmark_gas2015_ai import incremental_coverage
+        truth = [{'label': 'malicious', 'category': 'MSCI'}, {'label': 'malicious', 'category': 'MSCI'},
+                 {'label': 'benign', 'category': 'Normal'}]
+        coverage = incremental_coverage(truth, [True, False, True], [False, True, False])
+        self.assertEqual(coverage, {'additional_TP': 1, 'additional_FP': 1, 'additional_TP_by_category': {'MSCI': 1}})
+
     def test_threshold_free_metrics_handle_ties(self):
         from benchmark_gas2015_ai import average_precision, roc_auc
         import numpy as np

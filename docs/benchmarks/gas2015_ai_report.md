@@ -47,6 +47,22 @@ Attacks are 0.218 of test packets, which is the average precision of a detector 
 | lstm | 305 ± 83 | 322 ± 33 | 0.479 ± 0.046 | 0.026 ± 0.007 | 0.0076 ± 0.0008 | 0.002 | 0.000 | 0.001 | 0.065 | 0.000 | 0.080 | 0.025 |
 | hybrid | 498 ± 70 | 327 ± 19 | 0.601 ± 0.019 | 0.042 ± 0.006 | 0.0077 ± 0.0004 | 0.010 | 0.000 | 0.002 | 0.099 | 0.000 | 0.176 | 0.025 |
 
+## Additional Packets Detected Beyond Both Simple Rules
+
+Lower recall in a category does not mean identical detections. These counts compare each model with the union of the range and state rules on all test packets, without retraining or changing thresholds.
+
+| Seed | Detector | Additional TP | Additional FP | Additional TP by category |
+|---|---|---:|---:|---|
+| 1337 | isolation_forest | 92 | 383 | DoS 5, MPCI 26, MSCI 61 |
+| 1337 | lstm | 0 | 332 | none |
+| 1337 | hybrid | 5 | 318 | DoS 2, MPCI 1, MSCI 1, NMRI 1 |
+| 2024 | isolation_forest | 24 | 127 | MPCI 7, MSCI 17 |
+| 2024 | lstm | 0 | 278 | none |
+| 2024 | hybrid | 5 | 310 | DoS 3, MPCI 1, MSCI 1 |
+| 7 | isolation_forest | 64 | 162 | DoS 1, MPCI 8, MSCI 55 |
+| 7 | lstm | 10 | 357 | DoS 5, MPCI 3, MSCI 1, NMRI 1 |
+| 7 | hybrid | 16 | 353 | DoS 8, MPCI 6, MSCI 1, NMRI 1 |
+
 NMRI and CMRI are response injections, so they only appear in this table.
 
 ## Requests Only: AI Next to the OT Context (test)
@@ -103,4 +119,4 @@ Per-event detection time with rules, baseline, Isolation Forest and TorchScript 
 - Features and hyperparameters were fixed before the first run. Dropping constant or noisy features might help Isolation Forest, but choosing them on this test window would overfit; that needs a fresh split.
 - The range and state rules assume training covered every legitimate operating point. In a plant, a new setpoint or state combination after commissioning is a false positive until the baseline is updated through change control.
 - Labels are per packet from the dataset; the response to an attack command is labelled as an attack.
-- Combinations are decision-level unions or gates computed here. The engine risk scorer does not yet take calibrated AI thresholds, so these rows are not what the deployed engine alerts on.
+- Combinations are decision-level unions or gates computed here. The engine risk scorer does not implement the offline union/gate decisions used here, so these rows are not what the deployed engine alerts on.

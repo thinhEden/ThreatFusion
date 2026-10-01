@@ -13,6 +13,7 @@ import json
 import math
 import os
 import platform
+import shutil
 import socket
 import statistics
 import subprocess
@@ -32,7 +33,10 @@ class ProcessSampler:
 
     def __init__(self, pid):
         self.pid = pid
-        if os.name == 'nt':
+        self._windows = os.name == 'nt'
+        self._last_sample = {'cpu_s': 0.0, 'working_set_mb': 0.0, 'private_mb': 0.0,
+                             'peak_working_set_mb': None}
+        if self._windows:
             from ctypes import wintypes
 
             class Counters(ctypes.Structure):
@@ -46,6 +50,7 @@ class ProcessSampler:
             self._kernel32.OpenProcess.restype = wintypes.HANDLE
             self._kernel32.K32GetProcessMemoryInfo.argtypes = [wintypes.HANDLE, ctypes.POINTER(Counters), wintypes.DWORD]
             self._kernel32.GetProcessTimes.argtypes = [wintypes.HANDLE] + [ctypes.POINTER(wintypes.FILETIME)] * 4
+            self._kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
             self._filetime = wintypes.FILETIME
             # PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ; the handle stays valid after the process exits.
             self._handle = self._kernel32.OpenProcess(0x1000 | 0x0010, False, pid)
@@ -53,13 +58,19 @@ class ProcessSampler:
                 raise OSError(ctypes.get_last_error(), 'OpenProcess failed')
         else:
             import psutil
+            self._psutil = psutil
             self._process = psutil.Process(pid)
 
     def sample(self):
-        if os.name != 'nt':
-            memory, cpu = self._process.memory_full_info(), self._process.cpu_times()
-            return {'cpu_s': cpu.user + cpu.system, 'working_set_mb': memory.rss / MB, 'private_mb': memory.uss / MB,
-                    'peak_working_set_mb': None}
+        if not self._windows:
+            try:
+                memory, cpu = self._process.memory_full_info(), self._process.cpu_times()
+            except (self._psutil.NoSuchProcess, self._psutil.ZombieProcess):
+                # Exit can race a live sample. Final CPU and peak RSS come from wait4(), not this snapshot.
+                return dict(self._last_sample)
+            self._last_sample = {'cpu_s': cpu.user + cpu.system, 'working_set_mb': memory.rss / MB,
+                                 'private_mb': memory.uss / MB, 'peak_working_set_mb': None}
+            return dict(self._last_sample)
         counters = self._counters()
         counters.cb = ctypes.sizeof(counters)
         if not self._kernel32.K32GetProcessMemoryInfo(self._handle, ctypes.byref(counters), counters.cb):
@@ -71,8 +82,32 @@ class ProcessSampler:
         return {'cpu_s': kernel + user, 'working_set_mb': counters.WorkingSetSize / MB,
                 'private_mb': counters.PrivateUsage / MB, 'peak_working_set_mb': counters.PeakWorkingSetSize / MB}
 
+    def running(self, process):
+        if self._windows:
+            return process.poll() is None
+        # Observe termination without reaping: wait4() must still collect this child's final accounting.
+        return os.waitid(os.P_PID, self.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT) is None
+
+    def finish(self, process):
+        live = self.sample()
+        if self._windows:
+            process.wait(timeout=120)
+            exited = self.sample()
+            live.update(cpu_s=exited['cpu_s'], peak_working_set_mb=exited['peak_working_set_mb'])
+        else:
+            deadline = time.monotonic() + 120
+            while self.running(process):
+                if time.monotonic() >= deadline:
+                    raise subprocess.TimeoutExpired(process.args, 120)
+                time.sleep(.01)
+            _, status, usage = os.wait4(self.pid, 0)
+            process.returncode = os.WEXITSTATUS(status) if os.WIFEXITED(status) else -os.WTERMSIG(status)
+            live.update(cpu_s=usage.ru_utime + usage.ru_stime,
+                        peak_working_set_mb=usage.ru_maxrss / (MB if sys.platform == 'darwin' else 1024))
+        return live
+
     def close(self):
-        if os.name == 'nt' and self._handle:
+        if self._windows and self._handle:
             self._kernel32.CloseHandle(self._handle)
             self._handle = None
 
@@ -104,6 +139,29 @@ def percentile(values, q):
 
 
 IF_THRESHOLD = None  # Set in main from the AI benchmark calibration.
+IF_SEED = 1337
+
+
+def prepare_performance_model(folder, experiment):
+    """Copy the first evaluated seed and apply its benign-validation loss threshold deterministically."""
+    selected = experiment['per_seed'][0]
+    source = folder / f"lstm_seed{selected['seed']}.pt"
+    metadata_path = Path(str(source) + '.json')
+    if not source.is_file() or not metadata_path.is_file():
+        raise ValueError('Run benchmark_gas2015_ai.py first to create the evaluated LSTM artifacts')
+    metadata = json.loads(metadata_path.read_text(encoding='utf-8'))
+    if metadata.get('seed') != selected['seed'] or metadata.get('feature_count') != experiment['feature_count']:
+        raise ValueError('Performance model seed or feature count does not match the AI evaluation')
+    threshold = selected['calibration']['lstm']
+    if not math.isfinite(threshold) or threshold <= 0:
+        raise ValueError('LSTM calibration must be a finite positive reconstruction-loss threshold')
+    target = folder / 'lstm_perf.pt'
+    shutil.copyfile(source, target)
+    metadata.update(anomaly_threshold=threshold,
+                    threshold_source=f"benchmark_gas2015_ai seed {selected['seed']}, benign validation FPR "
+                                     f"{experiment['target_validation_fpr']}")
+    Path(str(target) + '.json').write_text(json.dumps(metadata, indent=2), encoding='utf-8')
+    return target
 
 
 def scenarios(model):
@@ -112,7 +170,7 @@ def scenarios(model):
     rules = ['--rules', str(ROOT / 'data/behavior_rules.csv'), '--iocs', str(ROOT / 'data/iocs.csv'),
              '--attack-map', str(ROOT / 'data/attack_mapping.csv')]
     context = ['--context', str(AI / 'policy_envelope.json')]
-    baseline = ['--baseline', str(AI / 'train.jsonl'), '--baseline-format', 'jsonl']
+    baseline = ['--baseline', str(AI / 'train.jsonl'), '--baseline-format', 'jsonl', '--if-seed', str(IF_SEED)]
     calibrated = ['--if-threshold', repr(IF_THRESHOLD)]
     return {'rules': rules, 'rules+envelope': rules + context, 'rules+envelope+if': rules + context + baseline + calibrated,
             'full': rules + context + baseline + calibrated + ['--lstm', str(model)],
@@ -130,11 +188,11 @@ def run_batch(engine, arguments, events, folder, name):
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=folder)
     sampler, peak = ProcessSampler(process.pid), 0.0
     try:
-        while process.poll() is None:
+        while sampler.running(process):
             peak = max(peak, sampler.sample()['working_set_mb'])
             time.sleep(.02)
         wall = time.perf_counter() - started
-        final = sampler.sample()
+        final = sampler.finish(process)
     finally:
         sampler.close()
     out, err = process.communicate()
@@ -218,8 +276,7 @@ class StreamEngine:
         self.socket.close()
         self.process.stdin.write(b'\n')
         self.process.stdin.flush()
-        self.process.wait(timeout=120)
-        exited = self.sampler.sample()
+        exited = self.sampler.finish(self.process)
         final.update(cpu_s=exited['cpu_s'], peak_working_set_mb=exited['peak_working_set_mb'])
         self.sampler.close()
         self.stderr.close()
@@ -400,9 +457,13 @@ def render(report):
              '- `rules`: IOC correlation, 13 behaviour rules and ATT&CK annotation.',
              '- `rules+envelope`: plus the OT operating-envelope context and its audit trail.',
              '- `rules+envelope+if`: plus the new-peer/flow/function baseline and Isolation Forest (100 trees), trained at startup on '
-             f"{report['training_events']:,} packets, with the threshold calibrated in the AI benchmark ({report['if_threshold']:.4f}).",
+             f"the benign rows of a {report['training_events']:,}-packet labelled training input; malicious rows are excluded by the engine. "
+             f"The threshold is calibrated in the AI benchmark ({report['if_threshold']:.4f}).",
              '- `full`: plus the LSTM autoencoder through TorchScript (window 10, 23 features, calibrated loss threshold).',
-             "- `full-default-if` (stream only): `full` with the engine's uncalibrated default Isolation Forest threshold of 0.55.", '',
+             "- `full-default-if` (stream only): `full` with the engine's uncalibrated default Isolation Forest threshold of 0.55.",
+             '- Before a new run, the default LSTM artifact is copied from the first evaluated seed and its metadata receives '
+             'that seed\'s validation-calibrated loss threshold. A custom `--model` must provide calibrated metadata. On Linux, '
+             '`psutil` samples live memory and `wait4` collects final CPU and peak RSS before the child is reaped.', '',
              '## Batch Mode', '',
              f"Median of {b['rules']['repeats']} runs. End-to-end includes process start, model training, JSON parsing, detection and "
              'CSV output. Detection throughput counts only the per-event detection loop.', '',
@@ -496,7 +557,7 @@ def render(report):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--engine', required=True)
-    parser.add_argument('--model', default=str(AI / 'lstm_perf.pt'), help='TorchScript model with a calibrated threshold')
+    parser.add_argument('--model', help='Custom calibrated TorchScript model; default: prepare the first evaluated AI seed')
     parser.add_argument('--output', default='out/perf')
     parser.add_argument('--report', default='docs/benchmarks/engine_performance')
     parser.add_argument('--phases', default='batch,stream,cardinality,soak')
@@ -512,11 +573,12 @@ def main():
     parser.add_argument('--cardinality-before', help='JSON with cardinality results from an earlier engine build')
     parser.add_argument('--render-only', action='store_true', help='Rewrite the Markdown report from the existing JSON')
     parser.add_argument('--if-threshold', type=float,
-                        help='Calibrated Isolation Forest threshold; default: seed 1337 of docs/benchmarks/gas2015_ai_report.json')
+                        help='Calibrated Isolation Forest threshold; default: first evaluated seed of docs/benchmarks/gas2015_ai_report.json')
     args = parser.parse_args()
-    global IF_THRESHOLD
-    IF_THRESHOLD = args.if_threshold if args.if_threshold is not None else json.loads(
-        (ROOT / 'docs/benchmarks/gas2015_ai_report.json').read_text(encoding='utf-8'))['per_seed'][0]['calibration']['isolation_forest']
+    global IF_THRESHOLD, IF_SEED
+    experiment = json.loads((ROOT / 'docs/benchmarks/gas2015_ai_report.json').read_text(encoding='utf-8'))
+    IF_SEED = experiment['per_seed'][0]['seed']
+    IF_THRESHOLD = args.if_threshold if args.if_threshold is not None else experiment['per_seed'][0]['calibration']['isolation_forest']
     engine, folder = Path(args.engine).resolve(), Path(args.output).resolve()
     folder.mkdir(parents=True, exist_ok=True)
     phases = set(args.phases.split(','))
@@ -525,8 +587,9 @@ def main():
     if args.render_only:
         Path(f'{args.report}.md').write_text(render(report), encoding='utf-8')
         return
+    args.model = str(Path(args.model).resolve() if args.model else prepare_performance_model(AI, experiment))
     report.update({'machine': machine(), 'engine_sha256': hashlib.sha256(engine.read_bytes()).hexdigest(),
-                   'if_threshold': IF_THRESHOLD, 'lstm_max_flows': 4096,
+                   'if_threshold': IF_THRESHOLD, 'if_seed': IF_SEED, 'lstm_max_flows': 4096,
                    'model': Path(args.model).name, 'training_events': sum(1 for _ in (AI / 'train.jsonl').open(encoding='utf-8')),
                    'measured_at': datetime.now(timezone.utc).isoformat(timespec='seconds')})
     save = lambda: report_path.write_text(json.dumps(report, indent=2), encoding='utf-8')
