@@ -141,7 +141,7 @@ static int buildTree(IsolationForestDetector::Tree& tree,
     return nodeIndex;
 }
 
-void IsolationForestDetector::train(const std::vector<Event>& events, int treeCount, int maxDepth) {
+void IsolationForestDetector::train(const std::vector<Event>& events, int treeCount, int maxDepth, unsigned seed) {
     trees_.clear();
     maxDepth_ = maxDepth;
     std::vector<std::vector<double>> points;
@@ -161,7 +161,7 @@ void IsolationForestDetector::train(const std::vector<Event>& events, int treeCo
     }
     sampleSize_ = static_cast<int>(std::min<std::size_t>(points.size(), 256));
 
-    std::mt19937 rng(1337);
+    std::mt19937 rng(seed);
     std::vector<int> indices(points.size());
     std::iota(indices.begin(), indices.end(), 0);
 
@@ -206,7 +206,7 @@ std::vector<Detection> IsolationForestDetector::evaluate(const Event& event) con
     if (empty()) return detections;
     const auto score = anomalyScore(event);
 
-    if (score >= 0.55) {
+    if (score >= threshold_) {
         detections.push_back({
             event.id,
             "isolation_forest",

@@ -1,0 +1,252 @@
+{
+  "queries": [
+    {
+      "id": "tf-hunt-pb02-office-child",
+      "playbook": "PB-02",
+      "language": "kql",
+      "query": "event.code: \"1\" and process.parent.name: (\"WINWORD.EXE\" or \"EXCEL.EXE\" or \"OUTLOOK.EXE\") and process.name: (\"powershell.exe\" or \"cmd.exe\" or \"mshta.exe\" or \"wscript.exe\" or \"rundll32.exe\")",
+      "expected": {},
+      "observed": {},
+      "esql_kql": {},
+      "kibana_whole_query_alerts": 0,
+      "passed": true,
+      "control": {
+        "query": "event.code: \"1\" and process.parent.name: (\"wscript.exe\") and process.name: (\"powershell.exe\" or \"cmd.exe\" or \"mshta.exe\" or \"wscript.exe\" or \"rundll32.exe\")",
+        "expected": {
+          "empire_launcher_vbs": 1
+        },
+        "minimum": false,
+        "observed": {
+          "empire_launcher_vbs": 1
+        },
+        "esql_kql": {
+          "empire_launcher_vbs": 1
+        },
+        "kibana_whole_query_alerts": 1,
+        "passed": true,
+        "why": "No capture has Office starting a process. The control swaps in the script host from the Empire VBS launcher to prove the fields and value lists match."
+      }
+    },
+    {
+      "id": "tf-hunt-pb02-user-file-drop",
+      "playbook": "PB-02",
+      "language": "kql",
+      "query": "event.code: \"11\" and file.path: (*\\\\Downloads\\\\* or *\\\\AppData\\\\Local\\\\Temp\\\\*) and file.extension: (\"exe\" or \"dll\" or \"js\" or \"hta\" or \"lnk\")",
+      "expected": {},
+      "observed": {},
+      "esql_kql": {},
+      "kibana_whole_query_alerts": 0,
+      "passed": true,
+      "control": {
+        "query": "event.code: \"11\" and file.path: (*\\\\Downloads\\\\* or *\\\\AppData\\\\Local\\\\Temp\\\\*)",
+        "expected": {
+          "psh_lsass_memory_dump_comsvcs": 1,
+          "empire_launcher_vbs": 2
+        },
+        "minimum": false,
+        "observed": {
+          "empire_launcher_vbs": 2,
+          "psh_lsass_memory_dump_comsvcs": 1
+        },
+        "esql_kql": {},
+        "kibana_whole_query_alerts": 3,
+        "passed": true,
+        "why": "Files written to user Temp in the captures are a LSASS dump and PowerShell policy-test scripts, none with these extensions. The control drops the extension clause to prove the path wildcards match."
+      }
+    },
+    {
+      "id": "tf-hunt-pb02-dns-domain",
+      "playbook": "PB-02",
+      "language": "kql",
+      "query": "event.code: \"22\" and dns.question.name: \"wdcp.microsoft.com\"",
+      "expected": {
+        "empire_launcher_vbs": 1
+      },
+      "observed": {
+        "empire_launcher_vbs": 1
+      },
+      "esql_kql": {
+        "empire_launcher_vbs": 1
+      },
+      "kibana_whole_query_alerts": 1,
+      "passed": true
+    },
+    {
+      "id": "tf-hunt-pb02-ot-from-workstation",
+      "playbook": "PB-02",
+      "language": "kql",
+      "query": "source.ip: \"10.50.1.20\" and network.protocol: modbus",
+      "expected": {
+        "baseline": 115,
+        "bounded-host": 109,
+        "bounded": 50
+      },
+      "observed": {
+        "baseline": 115,
+        "bounded": 50,
+        "bounded-host": 109
+      },
+      "esql_kql": {
+        "baseline": 115,
+        "bounded": 50,
+        "bounded-host": 109
+      },
+      "kibana_whole_query_alerts": 272,
+      "passed": true
+    },
+    {
+      "id": "tf-hunt-pb03-encoded-powershell",
+      "playbook": "PB-03",
+      "language": "kql",
+      "query": "event.code: \"1\" and host.name: \"WORKSTATION5.theshire.local\" and process.name: \"powershell.exe\" and process.command_line: (*-enc* or *-EncodedCommand* or *FromBase64String*)",
+      "expected": {
+        "empire_launcher_vbs": 1
+      },
+      "observed": {
+        "empire_launcher_vbs": 1
+      },
+      "esql_kql": {
+        "empire_launcher_vbs": 1
+      },
+      "kibana_whole_query_alerts": 1,
+      "passed": true
+    },
+    {
+      "id": "tf-hunt-pb03-lsass-access",
+      "playbook": "PB-03",
+      "language": "kql",
+      "query": "event.code: \"10\" and host.name: \"WORKSTATION5.theshire.local\" and winlog.event_data.TargetImage: *\\\\lsass.exe",
+      "expected": {
+        "empire_launcher_vbs": 2,
+        "empire_mimikatz_logonpasswords": 4
+      },
+      "observed": {
+        "empire_launcher_vbs": 2,
+        "empire_mimikatz_logonpasswords": 4
+      },
+      "esql_kql": {
+        "empire_mimikatz_logonpasswords": 4,
+        "empire_launcher_vbs": 2
+      },
+      "kibana_whole_query_alerts": 6,
+      "passed": true
+    },
+    {
+      "id": "tf-hunt-pb03-service-task",
+      "playbook": "PB-03",
+      "language": "kql",
+      "query": "event.code: (\"7045\" or \"4697\" or \"4698\") and host.name: \"WORKSTATION6.theshire.local\"",
+      "expected": {
+        "empire_psexec_dcerpc_tcp_svcctl": 2
+      },
+      "observed": {
+        "empire_psexec_dcerpc_tcp_svcctl": 2
+      },
+      "esql_kql": {
+        "empire_psexec_dcerpc_tcp_svcctl": 2
+      },
+      "kibana_whole_query_alerts": 2,
+      "passed": true
+    },
+    {
+      "id": "tf-hunt-pb03-ot-from-host",
+      "playbook": "PB-03",
+      "language": "kql",
+      "query": "source.ip: \"10.50.1.20\" and network.protocol: (modbus or s7comm or dnp3)",
+      "expected": {
+        "baseline": 115,
+        "bounded-host": 109,
+        "bounded": 50
+      },
+      "observed": {
+        "baseline": 115,
+        "bounded": 50,
+        "bounded-host": 109
+      },
+      "esql_kql": {
+        "baseline": 115,
+        "bounded": 50,
+        "bounded-host": 109
+      },
+      "kibana_whole_query_alerts": 272,
+      "passed": true
+    },
+    {
+      "id": "tf-hunt-pb04-bad-password-unknown-user",
+      "playbook": "PB-04",
+      "language": "kql",
+      "query": "event.code: \"4625\" and winlog.event_data.SubStatus: (\"0xc000006a\" or \"0xc0000064\")",
+      "expected": {
+        "mdec_4776_4625_local_bruteforce": 16,
+        "splunk_t1110_003_purplesharp_invalid_users_ntlm": 50,
+        "splunk_t1110_003_purplesharp_valid_users_ntlm": 50
+      },
+      "observed": {
+        "mdec_4776_4625_local_bruteforce": 16,
+        "splunk_t1110_003_purplesharp_invalid_users_ntlm": 50,
+        "splunk_t1110_003_purplesharp_valid_users_ntlm": 50
+      },
+      "esql_kql": {
+        "mdec_4776_4625_local_bruteforce": 16,
+        "splunk_t1110_003_purplesharp_invalid_users_ntlm": 50,
+        "splunk_t1110_003_purplesharp_valid_users_ntlm": 50
+      },
+      "kibana_whole_query_alerts": 116,
+      "passed": true
+    },
+    {
+      "id": "tf-hunt-pb04-lockout",
+      "playbook": "PB-04",
+      "language": "kql",
+      "query": "event.code: \"4740\"",
+      "expected": {},
+      "observed": {},
+      "esql_kql": {},
+      "kibana_whole_query_alerts": 0,
+      "passed": true
+    },
+    {
+      "id": "tf-hunt-pb04-failures-then-success",
+      "playbook": "PB-04",
+      "language": "eql",
+      "query": "sequence by host.name, user.name with maxspan=10m\n  [authentication where event.code == \"4625\"] with runs=5\n  [authentication where event.code == \"4624\"]",
+      "expected": {},
+      "observed": {},
+      "passed": true,
+      "control": {
+        "query": "sequence by host.name, user.name with maxspan=10m\n  [authentication where event.code == \"4625\"] with runs=5",
+        "expected": {
+          "mdec_4776_4625_local_bruteforce": 2
+        },
+        "minimum": true,
+        "observed": {
+          "mdec_4776_4625_local_bruteforce": 6
+        },
+        "passed": true,
+        "why": "No capture has a successful 4624 after the failures. The control keeps only the five failures to prove the join keys and categories match: both accounts in the local brute force must produce a sequence, and spraying, one failure per account, must not."
+      }
+    }
+  ],
+  "saved_searches": 10,
+  "passed": 11,
+  "kibana_esql_disagreements": [
+    [
+      "tf-hunt-pb02-user-file-drop",
+      "control"
+    ]
+  ],
+  "whole_query_preview_shortfall": [
+    [
+      "tf-hunt-pb02-ot-from-workstation",
+      "hunt",
+      274,
+      272
+    ],
+    [
+      "tf-hunt-pb03-ot-from-host",
+      "hunt",
+      274,
+      272
+    ]
+  ]
+}

@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Trigger** | A burst of `4625` failed logons, `4740` lockouts, `4771` Kerberos pre-authentication failures, or a success after a run of failures |
-| **ATT&CK** | Enterprise [T1110.001](https://attack.mitre.org/techniques/T1110/001/) Password Guessing, [T1110.003](https://attack.mitre.org/techniques/T1110/003/) Password Spraying, [T1078](https://attack.mitre.org/techniques/T1078/) Valid Accounts; ICS [T0859](https://attack.mitre.org/techniques/T0859/) Valid Accounts |
+| **Trigger** | A burst of `4625` failed logons or `4776` NTLM validation failures, `4740` lockouts, `4771` Kerberos pre-authentication failures, RC4 service tickets (`4769`), or a success after a run of failures |
+| **ATT&CK** | Enterprise [T1110.001](https://attack.mitre.org/techniques/T1110/001/) Password Guessing, [T1110.003](https://attack.mitre.org/techniques/T1110/003/) Password Spraying, [T1558.003](https://attack.mitre.org/techniques/T1558/003/) Kerberoasting, [T1078](https://attack.mitre.org/techniques/T1078/) Valid Accounts; ICS [T0859](https://attack.mitre.org/techniques/T0859/) Valid Accounts |
 | **Roles** | SOC L1, SOC L2, identity administrator, account owner |
 
-Kerberos spraying is detected by WIN-007, an ES|QL rule counting distinct failed accounts per source. It is validated on one EVTX-ATTACK-SAMPLES capture: 9 accounts in 11 ms, then a successful TGT for one account. The KQL and EQL snippets below, and NTLM brute force (4625), remain unvalidated (see [README](README.md)).
+Detections: WIN-007 (Kerberos spraying, 4768/4771), WIN-010 (bursts of 4625 failed logons), WIN-011 (4776 NTLM validation failures on a domain controller), and WIN-008/WIN-009 (Kerberoasting through RC4 service tickets, 4769). All are evaluated on public captures in the [Windows evaluation](../benchmarks/windows_detection_report.md). The hunting queries below were run against those captures; see the [hunting validation](../benchmarks/hunting_query_validation.md).
 
 ## 1. Triage (DE.AE)
 
@@ -28,20 +28,23 @@ event.code: "4625" and winlog.event_data.SubStatus: ("0xc000006a" or "0xc0000064
 event.code: "4740"
 ```
 
-3. Check the logon type on any success:
+3. For WIN-008 or WIN-009 (Kerberoasting), list the service names the account requested and their encryption type. Any service account whose ticket was issued with RC4 (`0x17`) must be assumed crackable offline: rotate its password to a long random value or move it to a group managed service account, and set `msDS-SupportedEncryptionTypes` to AES only. A requester that is a computer account (`HOST$`) points to code running as SYSTEM on that host; continue with PB-03 for that host.
+4. Check the logon type on any success:
    - `3`: network.
    - `10`: RemoteInteractive (RDP), [T1021.001](https://attack.mitre.org/techniques/T1021/001/).
    - `2`: interactive.
 
 ## 2. Analysis (RS.AN, RS.MA)
 
-1. Look for success after failures from the same source:
+1. Look for a success after a run of failures for the same account on the same host:
 
 ```text
-sequence by source.ip, winlog.event_data.TargetUserName with maxspan=10m
+sequence by host.name, user.name with maxspan=10m
   [authentication where event.code == "4625"] with runs=5
   [authentication where event.code == "4624"]
 ```
+
+Join on the target host and user name, not on `source.ip`: local and many NTLM logons record no client address.
 
 2. Is the source internal, VPN or external? Is it expected for this user?
 3. After a success, follow the account: which hosts it logged on to, and whether it created accounts ([T1136.001](https://attack.mitre.org/techniques/T1136/001/), `4720`) or changed group membership (`4732`).

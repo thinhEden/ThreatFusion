@@ -53,16 +53,18 @@ The YARA rules are lab family indicators and have not been validated against rea
 
 ## Windows Host Detections (ATT&CK Enterprise)
 
-EQL rules in `siem/elastic/windows_rules.json` are evaluated on five OTRF captures by `tools/benchmark_windows.py`. Every hit is analyst-dispositioned ([report](../benchmarks/windows_detection_report.md)). Import `threatfusion_enterprise_layer.json` into ATT&CK Navigator to view the Enterprise matrix.
+EQL and ES|QL rules in `siem/elastic/windows_rules.json` are evaluated on public Windows captures (OTRF, EVTX-to-MITRE-Attack, splunk/attack_data and a local EVTX-ATTACK-SAMPLES file) by `tools/benchmark_windows.py`. Every hit is analyst-dispositioned ([report](../benchmarks/windows_detection_report.md)). Import `threatfusion_enterprise_layer.json` into ATT&CK Navigator to view the Enterprise matrix.
 
-| Technique | Name | Rules | Distinct true-positive events | Captures detected |
+| Technique | Name | Rules | Distinct true-positive hits | Captures detected |
 |---|---|---|---:|---|
 | [T1003.001](https://attack.mitre.org/techniques/T1003/001/) | LSASS Memory | WIN-002, WIN-003 | 5 | `empire_mimikatz_logonpasswords`, `psh_lsass_memory_dump_comsvcs` |
 | [T1053.005](https://attack.mitre.org/techniques/T1053/005/) | Scheduled Task | WIN-005 | 3 | `empire_schtasks_creation_standard_user` |
 | [T1059.001](https://attack.mitre.org/techniques/T1059/001/) | PowerShell | WIN-001, WIN-006 | 4 | `empire_launcher_vbs`, `empire_psexec_dcerpc_tcp_svcctl` |
 | [T1059.005](https://attack.mitre.org/techniques/T1059/005/) | Visual Basic | WIN-006 | 2 | `empire_launcher_vbs` |
-| [T1110.003](https://attack.mitre.org/techniques/T1110/003/) | Password Spraying | WIN-007 | 1 | `kerberos_pwd_spray_4771` |
+| [T1110.001](https://attack.mitre.org/techniques/T1110/001/) | Password Guessing | WIN-010, WIN-011 | 3 | `mdec_4776_4625_local_bruteforce`, `splunk_t1110_003_purplesharp_invalid_users_ntlm`, `splunk_t1110_003_purplesharp_valid_users_ntlm` |
+| [T1110.003](https://attack.mitre.org/techniques/T1110/003/) | Password Spraying | WIN-007, WIN-010, WIN-011 | 4 | `kerberos_pwd_spray_4771`, `mdec_4776_4625_local_bruteforce`, `splunk_t1110_003_purplesharp_invalid_users_ntlm`, `splunk_t1110_003_purplesharp_valid_users_ntlm` |
 | [T1543.003](https://attack.mitre.org/techniques/T1543/003/) | Windows Service | WIN-004 | 2 | `empire_psexec_dcerpc_tcp_svcctl` |
+| [T1558.003](https://attack.mitre.org/techniques/T1558/003/) | Kerberoasting | WIN-008, WIN-009 | 45 | `mdec_4769_kerberoast_low_encryption`, `splunk_t1558_003_unusual_kerberos_service_tickets` |
 | [T1569.002](https://attack.mitre.org/techniques/T1569/002/) | Service Execution | WIN-004 | 2 | `empire_psexec_dcerpc_tcp_svcctl` |
 
-No rule covers T1021 Remote Services, the OTRF mapping for the PsExec capture. WIN-004 catches its service-execution step instead. Brute force and Kerberoasting are not in these captures.
+No rule covers T1021 Remote Services, the OTRF mapping for the PsExec capture. WIN-004 catches its service-execution step instead. An ES|QL hit is one aggregated row (source, capture, five-minute window), so its count is not an event count.

@@ -13,11 +13,15 @@
 #include "threatfusion/ThreatIntel.h"
 #include "threatfusion/OtContext.h"
 
+#include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <mutex>
 #include <stdexcept>
+#include <thread>
 #include <vector>
 #include <iomanip>
 #include <sstream>
@@ -62,12 +66,17 @@ struct Options {
   std::string contextAuditPath = "out/context_audit.csv";
   std::string normalizedEventsPath;
   std::string pcapFilter;
+  std::string statsPath;
+  double statsInterval = 1.0;
+  unsigned ifSeed = 1337;
+  double ifThreshold = 0.55;
+  std::size_t lstmMaxFlows = 4096;
   int threshold = 60;
 };
 
 static void printUsage() {
   std::cout
-      << "ThreatFusion AI - OT/ICS threat detection prototype\n"
+      << "ThreatFusion - OT/ICS threat detection prototype\n"
       << "Usage: threatfusion [--mode batch|stream] [--port port] [--lstm "
          "path]\n"
       << "                    [--events path] [--format csv|jsonl|pcap] "
@@ -79,7 +88,10 @@ static void printUsage() {
       << "                    [--snort path --snort-config path]\n"
       << "                    [--alerts path] [--incidents path]\n"
       << "                    [--metrics path] [--threshold 60]\n";
-  std::cout << "                    [--scores path] (raw IF/LSTM scores for research)\n";
+  std::cout << "                    [--scores path] (raw IF/LSTM scores for research) [--if-seed 1337]\n";
+  std::cout << "                    [--if-threshold 0.55] (uncalibrated default; set from benign validation data)\n";
+  std::cout << "                    [--stats path --stats-interval 1] (stream counters for performance runs)\n";
+  std::cout << "                    [--lstm-max-flows 4096] (per-source LSTM windows kept in memory)\n";
   std::cout << "                    [--context policy.json --context-audit path]\n"
                "                    [--context-mode bounded|peer-only] (peer-only is an unsafe ablation)\n"
                "                    [--normalized-events path] [--pcap-filter expression] [--timings path]\n"
@@ -104,6 +116,8 @@ static Options parseArgs(int argc, char **argv) {
       options.port = std::stoi(requireValue(arg));
     else if (arg == "--lstm")
       options.lstmPath = requireValue(arg);
+    else if (arg == "--lstm-max-flows")
+      options.lstmMaxFlows = std::stoul(requireValue(arg));
     else if (arg == "--events")
       options.eventsPath = requireValue(arg);
     else if (arg == "--format")
@@ -162,6 +176,14 @@ static Options parseArgs(int argc, char **argv) {
       options.pcapFilter = requireValue(arg);
     else if (arg == "--threshold")
       options.threshold = std::stoi(requireValue(arg));
+    else if (arg == "--stats")
+      options.statsPath = requireValue(arg);
+    else if (arg == "--stats-interval")
+      options.statsInterval = std::stod(requireValue(arg));
+    else if (arg == "--if-seed")
+      options.ifSeed = static_cast<unsigned>(std::stoul(requireValue(arg)));
+    else if (arg == "--if-threshold")
+      options.ifThreshold = std::stod(requireValue(arg));
     else if (arg == "--help" || arg == "-h") {
       printUsage();
       std::exit(0);
@@ -175,6 +197,9 @@ static Options parseArgs(int argc, char **argv) {
     throw std::runtime_error("--timings and --normalized-events are batch-only exports");
   if (!options.hostAlertsPath.empty() && options.contextPath.empty())
     throw std::runtime_error("--host-alerts requires --context");
+  if (!options.statsPath.empty() && options.mode != "stream")
+    throw std::runtime_error("--stats is a stream-mode export; batch mode has --timings");
+  if (!(options.statsInterval > 0)) throw std::runtime_error("--stats-interval must be positive");
   return options;
 }
 
@@ -228,10 +253,12 @@ int main(int argc, char **argv) {
       const auto baselineEvents =
           loadEvents(options.baselinePath, baselineOptions);
       baselineDetector.train(baselineEvents);
-      isolationForestDetector.train(baselineEvents, 100);
+      isolationForestDetector.train(baselineEvents, 100, 8, options.ifSeed);
+      isolationForestDetector.setThreshold(options.ifThreshold);
     }
 
     LSTMDetector lstmDetector;
+    lstmDetector.setMaxFlows(options.lstmMaxFlows);
     if (!options.lstmPath.empty()) {
       if (!lstmDetector.loadModel(options.lstmPath))
         throw std::runtime_error("LSTM model could not be loaded");
@@ -256,6 +283,27 @@ int main(int argc, char **argv) {
     if (toLower(options.mode) == "stream") {
       SocketReceiver receiver;
       RiskScorer scorer;
+      // Counters for --stats. Detection time covers detectors, context and risk scoring, not alert output.
+      std::atomic<long long> streamEvents{0}, streamAlerts{0}, detectNsTotal{0}, detectNsMax{0};
+      auto record = [&](std::chrono::steady_clock::time_point start, bool alerted) {
+        const long long ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now() - start).count();
+        detectNsTotal += ns;
+        long long seen = detectNsMax.load();
+        while (ns > seen && !detectNsMax.compare_exchange_weak(seen, ns)) {}
+        if (alerted) ++streamAlerts;
+        ++streamEvents;
+      };
+      // Opened once: reopening per alert (header check, open, close) dominated stream time on Windows.
+      auto streamAlertLog = openCsvAppend("out/alerts_stream.csv",
+          {"incident_id", "event_id", "timestamp", "src_ip", "dst_ip", "asset_role",
+           "protocol", "classification", "top_severity", "asset_criticality",
+           "threat_severity", "confidence_score", "risk_score", "latency_ms", "verdict", "reasons",
+           "attack_techniques"});
+      std::mutex statsMutex;
+      std::condition_variable statsWake;
+      bool statsStop = false;
+      std::thread statsThread;
       auto callback = [&](const Event &event) {
         const auto detectionStart = std::chrono::steady_clock::now();
         auto detections = threatIntel.correlate(event);
@@ -276,6 +324,7 @@ int main(int argc, char **argv) {
         annotate(detections);
 
         if (detections.empty()) {
+          record(detectionStart, false);
           return;
         }
 
@@ -284,6 +333,7 @@ int main(int argc, char **argv) {
         alert.latencyMs = std::chrono::duration<double, std::milli>(
                               detectionEnd - detectionStart)
                               .count();
+        record(detectionStart, true);
 
         std::cout << "[ALERT] Event: " << alert.eventId
                   << " | IP: " << alert.srcIp << " -> " << alert.dstIp
@@ -292,16 +342,14 @@ int main(int argc, char **argv) {
                   << " | Verdict: " << alert.verdict
                   << " | Reasons: " << alert.reasons << "\n";
 
-        appendCsv("out/alerts_stream.csv",
-          {"incident_id", "event_id", "timestamp", "src_ip", "dst_ip", "asset_role",
-           "protocol", "classification", "top_severity", "asset_criticality",
-           "threat_severity", "confidence_score", "risk_score", "latency_ms", "verdict", "reasons",
-           "attack_techniques"},
+        writeCsvRow(streamAlertLog,
           {alert.incidentId, alert.eventId, alert.timestamp, alert.srcIp, alert.dstIp,
            alert.assetRole, alert.protocol, alert.classification, alert.topSeverity,
            precise(alert.assetCriticality), precise(alert.threatSeverity),
            precise(alert.confidenceScore), std::to_string(alert.riskScore),
            precise(alert.latencyMs), alert.verdict, alert.reasons, alert.attack});
+        // Flushed per alert because the dashboard tails this file.
+        streamAlertLog.flush();
       };
 
       if (!receiver.start(options.port, callback)) {
@@ -309,12 +357,38 @@ int main(int argc, char **argv) {
                   << "\n";
         return 1;
       }
+      if (!options.statsPath.empty()) {
+        writeCsv(options.statsPath, {"unix_ms", "elapsed_s", "events", "alerts", "detect_ms_total", "detect_ms_max_interval"}, {});
+        statsThread = std::thread([&] {
+          std::ofstream stats(options.statsPath, std::ios::app);
+          const auto started = std::chrono::steady_clock::now();
+          const std::chrono::duration<double> interval(options.statsInterval);
+          std::unique_lock<std::mutex> lock(statsMutex);
+          for (bool last = false; !last;) {
+            last = statsWake.wait_for(lock, interval, [&] { return statsStop; });
+            const auto unixMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::system_clock::now().time_since_epoch()).count();
+            stats << unixMs << ',' << precise(std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count())
+                  << ',' << streamEvents.load() << ',' << streamAlerts.load() << ',' << precise(detectNsTotal.load() / 1e6)
+                  << ',' << precise(detectNsMax.exchange(0) / 1e6) << '\n';
+            stats.flush();
+          }
+        });
+      }
 
       std::cout << "ThreatFusion Engine running in STREAMING mode on port "
                 << options.port << "\n";
       std::cout << "Press Enter to stop the engine...\n";
       std::cin.get();
       receiver.stop();
+      if (statsThread.joinable()) {
+        {
+          std::lock_guard<std::mutex> lock(statsMutex);
+          statsStop = true;
+        }
+        statsWake.notify_one();
+        statsThread.join();
+      }
       return 0;
     }
 

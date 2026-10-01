@@ -2,6 +2,7 @@
 #include "threatfusion/BehaviorDetector.h"
 #include "threatfusion/Csv.h"
 #include "threatfusion/DataIngestion.h"
+#include "threatfusion/IsolationForestDetector.h"
 #include "threatfusion/OtContext.h"
 #include "threatfusion/LSTMDetector.h"
 #include "threatfusion/RiskScorer.h"
@@ -224,6 +225,31 @@ int main() {
     std::remove(mapPath);
   }
 
+  // Isolation Forest seeds are reproducible, and a different seed builds a different forest.
+  {
+    std::vector<Event> baseline;
+    for (int i = 0; i < 300; ++i) {
+      Event ev;
+      ev.srcIp = "10.0.0.1"; ev.dstIp = "10.0.0.2"; ev.protocol = "modbus"; ev.assetRole = "plc";
+      ev.functionCode = i % 2 ? 3 : 16; ev.bytes = 20 + i % 7; ev.timestamp = "2015-12-22T16:00:00Z";
+      ev.extraFeatures = {(i % 11) / 10.0, (i % 5) / 4.0};
+      baseline.push_back(ev);
+    }
+    Event probe = baseline.front();
+    probe.functionCode = 90; probe.extraFeatures = {1.4, -0.3};
+    IsolationForestDetector a, b, c;
+    a.train(baseline, 50, 8, 1337);
+    b.train(baseline, 50, 8, 1337);
+    c.train(baseline, 50, 8, 7);
+    assert(a.anomalyScore(probe) == b.anomalyScore(probe));
+    assert(a.anomalyScore(probe) != c.anomalyScore(probe));
+    assert(a.anomalyScore(probe) > a.anomalyScore(baseline[10]));
+    a.setThreshold(1.0);
+    assert(a.evaluate(probe).empty());
+    a.setThreshold(0.0);
+    assert(a.evaluate(probe).size() == 1);
+  }
+
   // Test LSTMDetector
   {
     LSTMDetector lstm;
@@ -247,6 +273,25 @@ int main() {
     printf("[TEST] LSTMDetector evaluated successfully.\n");
   }
 
+  // LSTM windows are bounded per source: the stalest source is evicted and restarts its warm-up.
+  {
+    LSTMDetector bounded;
+    assert(bounded.loadModel("simulated"));
+    bounded.setMaxFlows(2);
+    Event ev;
+    ev.dstIp = "10.0.0.2"; ev.protocol = "modbus"; ev.functionCode = 3; ev.assetRole = "plc";
+    ev.timestamp = "2015-12-22T16:00:00Z";
+    ev.srcIp = "a";
+    for (int i = 0; i < 10; ++i) bounded.evaluate(ev);
+    assert(bounded.lastError().has_value());
+    ev.srcIp = "b"; bounded.evaluate(ev);
+    ev.srcIp = "c"; bounded.evaluate(ev);
+    assert(bounded.flowCount() == 2);
+    ev.srcIp = "a"; bounded.evaluate(ev);
+    assert(!bounded.lastError().has_value());
+    assert(bounded.flowCount() == 2);
+  }
+
   // Test SocketReceiver
   {
     SocketReceiver receiver;
@@ -256,6 +301,6 @@ int main() {
     printf("[TEST] SocketReceiver started and stopped successfully.\n");
   }
 
-  printf("[TEST] All ThreatFusion-AI tests passed successfully!\n");
+  printf("[TEST] All ThreatFusion tests passed successfully!\n");
   return 0;
 }

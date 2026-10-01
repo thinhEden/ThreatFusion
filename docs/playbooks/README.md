@@ -27,7 +27,8 @@ OT response follows [NIST SP 800-82 Rev. 3](https://csrc.nist.gov/pubs/sp/800/82
 ## Status of the Queries
 
 - **PB-01:** runs against data that exists today: the context audit, the PCAP evidence and the `threatfusion-alerts-*` index.
-- **PB-02 and PB-03:** alerts come from the EQL detections WIN-001 to WIN-006 in `siem/elastic/windows_rules.json`. They are validated on five OTRF captures and deployed to Elastic Security; see the [evaluation](../benchmarks/windows_detection_report.md). The KQL hunting snippets use the same ECS fields as the `threatfusion-windows-otrf` index, but have not been run as saved searches.
-- **PB-04:** Kerberos password spraying (4768/4771) is validated by the ES|QL rule WIN-007 on one EVTX-ATTACK-SAMPLES capture. That file is GPL-3.0, so it is kept locally and not committed. NTLM brute force (4625) and Kerberoasting (4769) remain untested.
+- **PB-02 and PB-03:** alerts come from the EQL detections WIN-001 to WIN-006 in `siem/elastic/windows_rules.json`. They are validated on five OTRF captures and deployed to Elastic Security; see the [evaluation](../benchmarks/windows_detection_report.md).
+- **PB-04:** Kerberos password spraying (4768/4771) is validated by WIN-007 on one EVTX-ATTACK-SAMPLES capture, kept locally because it is GPL-3.0. Kerberoasting (4769, WIN-008/WIN-009) and NTLM guessing and spraying (4625/4776, WIN-010/WIN-011) are validated on committed EVTX-to-MITRE-Attack (CC0) and splunk/attack_data (Apache-2.0) captures.
+- **Hunting queries:** every KQL snippet in PB-02 to PB-04 is in `siem/elastic/hunting_queries.json`, saved in Kibana as a Discover search, and run against the captures by `tools/validate_hunting_queries.py`; see the [hunting validation](../benchmarks/hunting_query_validation.md). Running them found three hunts that used ECS fields the normalizer never produced; the normalizer now maps them.
 
 The ATT&CK coverage of every rule is listed in [docs/attack/coverage.md](../attack/coverage.md).

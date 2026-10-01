@@ -1,0 +1,129 @@
+[
+  {
+    "id": "tf-hunt-pb02-office-child",
+    "playbook": "PB-02",
+    "title": "TF Hunt - Office application starts a shell",
+    "language": "kql",
+    "index": "threatfusion-windows-otrf",
+    "query": "event.code: \"1\" and process.parent.name: (\"WINWORD.EXE\" or \"EXCEL.EXE\" or \"OUTLOOK.EXE\") and process.name: (\"powershell.exe\" or \"cmd.exe\" or \"mshta.exe\" or \"wscript.exe\" or \"rundll32.exe\")",
+    "expect": {},
+    "control": {
+      "query": "event.code: \"1\" and process.parent.name: (\"wscript.exe\") and process.name: (\"powershell.exe\" or \"cmd.exe\" or \"mshta.exe\" or \"wscript.exe\" or \"rundll32.exe\")",
+      "expect": {"empire_launcher_vbs": 1},
+      "why": "No capture has Office starting a process. The control swaps in the script host from the Empire VBS launcher to prove the fields and value lists match."
+    }
+  },
+  {
+    "id": "tf-hunt-pb02-user-file-drop",
+    "playbook": "PB-02",
+    "title": "TF Hunt - Executable content written to Downloads or Temp",
+    "language": "kql",
+    "index": "threatfusion-windows-otrf",
+    "query": "event.code: \"11\" and file.path: (*\\\\Downloads\\\\* or *\\\\AppData\\\\Local\\\\Temp\\\\*) and file.extension: (\"exe\" or \"dll\" or \"js\" or \"hta\" or \"lnk\")",
+    "expect": {},
+    "control": {
+      "query": "event.code: \"11\" and file.path: (*\\\\Downloads\\\\* or *\\\\AppData\\\\Local\\\\Temp\\\\*)",
+      "expect": {"psh_lsass_memory_dump_comsvcs": 1, "empire_launcher_vbs": 2},
+      "why": "Files written to user Temp in the captures are a LSASS dump and PowerShell policy-test scripts, none with these extensions. The control drops the extension clause to prove the path wildcards match."
+    }
+  },
+  {
+    "id": "tf-hunt-pb02-dns-domain",
+    "playbook": "PB-02",
+    "title": "TF Hunt - DNS lookups of a reported domain",
+    "language": "kql",
+    "index": "threatfusion-windows-otrf",
+    "query": "event.code: \"22\" and dns.question.name: \"<phishing domain>\"",
+    "parameters": {"<phishing domain>": "wdcp.microsoft.com"},
+    "expect": {"empire_launcher_vbs": 1},
+    "note": "Template. The validation value is a benign domain present in the captures; it checks the field mapping, not a phishing detection."
+  },
+  {
+    "id": "tf-hunt-pb02-ot-from-workstation",
+    "playbook": "PB-02",
+    "title": "TF Hunt - OT commands from the phished workstation",
+    "language": "kql",
+    "index": "threatfusion-alerts-*",
+    "query": "source.ip: \"<workstation IP>\" and network.protocol: modbus",
+    "parameters": {"<workstation IP>": "10.50.1.20"},
+    "group_by": "threatfusion.variant",
+    "expect": {"baseline": 115, "bounded-host": 109, "bounded": 50},
+    "note": "10.50.1.20 is the lab engineering workstation."
+  },
+  {
+    "id": "tf-hunt-pb03-encoded-powershell",
+    "playbook": "PB-03",
+    "title": "TF Hunt - Encoded PowerShell on the host",
+    "language": "kql",
+    "index": "threatfusion-windows-otrf",
+    "query": "event.code: \"1\" and host.name: \"<host>\" and process.name: \"powershell.exe\" and process.command_line: (*-enc* or *-EncodedCommand* or *FromBase64String*)",
+    "parameters": {"<host>": "WORKSTATION5.theshire.local"},
+    "expect": {"empire_launcher_vbs": 1}
+  },
+  {
+    "id": "tf-hunt-pb03-lsass-access",
+    "playbook": "PB-03",
+    "title": "TF Hunt - Process access to LSASS on the host",
+    "language": "kql",
+    "index": "threatfusion-windows-otrf",
+    "query": "event.code: \"10\" and host.name: \"<host>\" and winlog.event_data.TargetImage: *\\\\lsass.exe",
+    "parameters": {"<host>": "WORKSTATION5.theshire.local"},
+    "expect": {"empire_launcher_vbs": 2, "empire_mimikatz_logonpasswords": 4}
+  },
+  {
+    "id": "tf-hunt-pb03-service-task",
+    "playbook": "PB-03",
+    "title": "TF Hunt - Service or scheduled task created on the host",
+    "language": "kql",
+    "index": "threatfusion-windows-otrf",
+    "query": "event.code: (\"7045\" or \"4697\" or \"4698\") and host.name: \"<host>\"",
+    "parameters": {"<host>": "WORKSTATION6.theshire.local"},
+    "expect": {"empire_psexec_dcerpc_tcp_svcctl": 2}
+  },
+  {
+    "id": "tf-hunt-pb03-ot-from-host",
+    "playbook": "PB-03",
+    "title": "TF Hunt - OT commands from the infected host",
+    "language": "kql",
+    "index": "threatfusion-alerts-*",
+    "query": "source.ip: \"<host IP>\" and network.protocol: (modbus or s7comm or dnp3)",
+    "parameters": {"<host IP>": "10.50.1.20"},
+    "group_by": "threatfusion.variant",
+    "expect": {"baseline": 115, "bounded-host": 109, "bounded": 50}
+  },
+  {
+    "id": "tf-hunt-pb04-bad-password-unknown-user",
+    "playbook": "PB-04",
+    "title": "TF Hunt - Failed logons for a wrong password or an unknown user",
+    "language": "kql",
+    "index": "threatfusion-windows-otrf",
+    "query": "event.code: \"4625\" and winlog.event_data.SubStatus: (\"0xc000006a\" or \"0xc0000064\")",
+    "expect": {"mdec_4776_4625_local_bruteforce": 16, "splunk_t1110_003_purplesharp_invalid_users_ntlm": 50,
+               "splunk_t1110_003_purplesharp_valid_users_ntlm": 50},
+    "note": "The two 4625 events in mdec_4625_denied_account_restriction have SubStatus 0x0 (account restriction) and are correctly excluded."
+  },
+  {
+    "id": "tf-hunt-pb04-lockout",
+    "playbook": "PB-04",
+    "title": "TF Hunt - Account lockouts",
+    "language": "kql",
+    "index": "threatfusion-windows-otrf",
+    "query": "event.code: \"4740\"",
+    "expect": {},
+    "note": "No capture contains a lockout (4740); none of the brute-force captures reached a lockout threshold."
+  },
+  {
+    "id": "tf-hunt-pb04-failures-then-success",
+    "playbook": "PB-04",
+    "title": "TF Hunt - Five failures then a success for the same account on one host",
+    "language": "eql",
+    "index": "threatfusion-windows-otrf",
+    "query": "sequence by host.name, user.name with maxspan=10m\n  [authentication where event.code == \"4625\"] with runs=5\n  [authentication where event.code == \"4624\"]",
+    "expect": {},
+    "control": {
+      "query": "sequence by host.name, user.name with maxspan=10m\n  [authentication where event.code == \"4625\"] with runs=5",
+      "expect_min": {"mdec_4776_4625_local_bruteforce": 2},
+      "why": "No capture has a successful 4624 after the failures. The control keeps only the five failures to prove the join keys and categories match: both accounts in the local brute force must produce a sequence, and spraying, one failure per account, must not."
+    }
+  }
+]

@@ -3,6 +3,7 @@
 #include "Event.h"
 #include "Detection.h"
 
+#include <cstdint>
 #include <string>
 #include <vector>
 #include <map>
@@ -29,6 +30,9 @@ public:
     
     bool empty() const { return !modelLoaded_; }
     std::optional<double> lastError() const { return lastError_; }
+    // Bounds per-source windows. When full, the least recently seen source is evicted and restarts its warm-up.
+    void setMaxFlows(std::size_t maxFlows) { maxFlows_ = maxFlows < 1 ? 1 : maxFlows; }
+    std::size_t flowCount() const { return flowWindows_.size(); }
 
 private:
     std::vector<double> extractFeatures(const Event& event) const;
@@ -43,7 +47,13 @@ private:
     bool simulated_ = false;
 
     // Track sliding window of feature vectors per source IP
-    std::map<std::string, std::deque<std::vector<double>>> flowWindows_;
+    struct Flow {
+        std::deque<std::vector<double>> window;
+        std::uint64_t lastSeen = 0;
+    };
+    std::map<std::string, Flow> flowWindows_;
+    std::uint64_t clock_ = 0;
+    std::size_t maxFlows_ = 4096;
 
 #ifdef USE_LIBTORCH
     // LibTorch model module pointer wrapper to avoid headers when not compiling with LibTorch

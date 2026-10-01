@@ -1,2 +1,4 @@
 # Keep raw research datasets byte-identical to their published archives.
 datasets/MSU_ICS/** -text
+datasets/Windows_Splunk_attack_data/*.log -text
+datasets/Windows_EVTX_CC0/*.evtx binary

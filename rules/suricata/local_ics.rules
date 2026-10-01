@@ -1,5 +1,5 @@
 # ==============================================================================
-# ThreatFusion-AI Production-Grade OT/ICS Suricata Rules
+# ThreatFusion OT/ICS Suricata lab rules. Validated only on generated lab PCAPs, not on production traffic.
 # ==============================================================================
 
 # Modbus TCP Exploit & Command Rules
